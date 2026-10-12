@@ -183,7 +183,6 @@ class PrivateSettingsPayload(AdminInput):
     account_number: Optional[str] = ""
     transfer_instructions: Optional[str] = ""
     alert_recipients: Optional[str] = ""
-    notification_from_email: Optional[str] = ""
     notification_from_name: Optional[str] = ""
 
 
@@ -1460,10 +1459,11 @@ async def read_settings(
             "account_number": (private.account_number if private else "") or "",
             "transfer_instructions": (private.transfer_instructions if private else "") or "",
             "alert_recipients": (private.alert_recipients if private else "") or "",
-            "notification_from_email": (private.notification_from_email if private else "") or "",
             "notification_from_name": (private.notification_from_name if private else "") or "",
         },
-        "email_provider_configured": bool(app_settings.resend_api_key.strip()),
+        "email_provider_configured": bool(
+        app_settings.resend_api_key.strip() and app_settings.email_from_address.strip()
+    ),
     }
 
 
@@ -1517,7 +1517,6 @@ async def update_private_settings(
     private.account_number = sanitize_text(data.account_number, 40)
     private.transfer_instructions = sanitize_text(data.transfer_instructions, 2000)
     private.alert_recipients = sanitize_text(data.alert_recipients, 500)
-    private.notification_from_email = sanitize_text(data.notification_from_email, 160)
     private.notification_from_name = sanitize_text(data.notification_from_name, 120)
     await db.commit()
     return {"saved": True}

@@ -270,18 +270,25 @@ def build_business_email(
 # Envío
 # --------------------------------------------------------------------------- #
 async def _send_via_resend(
-    api_key: str, sender: str, to: List[str], subject: str, html: str
+    api_key: str, sender: str, to: List[str], subject: str, html: str, reply_to: str = ""
 ) -> Dict[str, Any]:
+    body: Dict[str, Any] = {"from": sender, "to": to, "subject": subject, "html": html}
+    if reply_to:
+        body["reply_to"] = reply_to
     # Short timeout: emails are sent inside the customer's request.
     try:
         async with httpx.AsyncClient(timeout=8.0) as http:
             response = await http.post(
                 RESEND_ENDPOINT,
                 headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                json={"from": sender, "to": to, "subject": subject, "html": html},
+                json=body,
             )
     except httpx.HTTPError as exc:
-        return {"ok": False, "error": f"No se pudo conectar con Resend ({type(exc).__name__})."}
+        return {
+            "ok": False,
+            "unreachable": True,
+            "error": f"No se pudo conectar con Resend ({type(exc).__name__}).",
+        }
     if response.status_code >= 400:
         return {
             "ok": False,
@@ -374,16 +381,16 @@ async def dispatch_reservation_emails(
     items = await load_reservation_items(db, reservation.id)
 
     api_key = app_settings.resend_api_key.strip()
-    from_email = (
-        (private.notification_from_email if private else "")
-        or app_settings.email_from_address
-    ).strip()
+    # El remitente es el dominio verificado del operador (variable de entorno); cada
+    # tienda sólo elige el nombre visible, y las respuestas llegan a su correo.
+    from_email = app_settings.email_from_address.strip()
     from_name = (
         (private.notification_from_name if private else "")
-        or app_settings.email_from_name
         or config["shop_name"]
-    ).strip()
-    sender = f"{from_name} <{from_email}>" if from_email else DEFAULT_FROM
+        or app_settings.email_from_name
+    ).strip().replace('"', "")
+    sender = f'"{from_name}" <{from_email}>' if from_email else DEFAULT_FROM
+    reply_to = (config.get("contact_email") or "").strip()
 
     recipients_raw = (
         (private.alert_recipients if private else "")
@@ -429,6 +436,7 @@ async def dispatch_reservation_emails(
             )
 
     outcomes: List[Dict[str, Any]] = []
+    provider_unreachable = ""
     for entry in plan:
         existing = await _existing_notification(
             db, reservation.id, entry["template"], entry["recipient_email"]
@@ -450,16 +458,27 @@ async def dispatch_reservation_emails(
                 "Falta configurar RESEND_API_KEY en la plataforma para enviar correos.",
                 "",
             )
+        elif provider_unreachable:
+            # No repetir la espera del timeout: la clienta sigue esperando la respuesta.
+            status, error, message_id = "fallido", provider_unreachable, ""
         else:
             await db.commit()
             result = await _send_via_resend(
-                api_key, sender, [entry["recipient_email"]], entry["subject"], entry["html"]
+                api_key,
+                sender,
+                [entry["recipient_email"]],
+                entry["subject"],
+                entry["html"],
+                # La clienta responde a la tienda; la tienda responde a la clienta.
+                reply_to=reply_to if entry["recipient_type"] == "cliente" else reservation.customer_email or "",
             )
             if result.get("ok"):
                 status, error, message_id = "enviado", "", result.get("message_id", "")
             else:
                 status, error, message_id = "fallido", str(result.get("error", ""))[:480], ""
                 logger.error("Fallo de correo (%s): %s", entry["template"], error)
+                if result.get("unreachable"):
+                    provider_unreachable = error
 
         refreshed = await _existing_notification(
             db, reservation.id, entry["template"], entry["recipient_email"]

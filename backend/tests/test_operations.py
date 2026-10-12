@@ -266,7 +266,7 @@ def test_admin_generates_and_sends_a_usable_private_link(client, monkeypatch, ca
 
     sent_html: list[str] = []
 
-    async def successful_provider(_api_key, _sender, _to, _subject, html):
+    async def successful_provider(_api_key, _sender, _to, _subject, html, reply_to=""):
         sent_html.append(html)
         return {"ok": True, "message_id": "provider-message-test"}
 
@@ -321,7 +321,7 @@ def test_failed_private_link_email_returns_recoverable_new_link(client, monkeypa
             "SELECT id FROM reservations WHERE folio=?", (created["folio"],)
         ).fetchone()[0]
 
-    async def failed_provider(_api_key, _sender, _to, _subject, _html):
+    async def failed_provider(_api_key, _sender, _to, _subject, _html, reply_to=""):
         return {"ok": False, "error": "provider unavailable"}
 
     monkeypatch.setattr(mailer.app_settings, "resend_api_key", "test-provider-key")
@@ -415,16 +415,20 @@ def test_production_catalog_seed_is_atomic_idempotent_and_private_free(tmp_path)
         assert db.execute("SELECT COUNT(*) FROM products").fetchone()[0] == counts["products"]
 
 
-def test_email_network_error_is_logged_as_failed_and_does_not_stop_other_emails(client, monkeypatch):
+def test_unreachable_provider_is_tried_once_and_every_email_is_logged_failed(client, monkeypatch):
     import httpx
 
+    calls = []
+
     async def unreachable_provider(self, *args, **kwargs):
+        calls.append(kwargs.get("json"))
         raise httpx.ConnectTimeout("simulated timeout")
 
     monkeypatch.setattr(mailer.app_settings, "resend_api_key", "test-provider-key")
     monkeypatch.setattr(httpx.AsyncClient, "post", unreachable_provider)
 
     created, _payload = create_reservation(client)
+    assert len(calls) == 1
 
     with db_connection() as db:
         rows = db.execute(
@@ -521,3 +525,33 @@ def test_slot_times_must_be_zero_padded_hours(client):
     )
     assert good.status_code == 200, good.text
     assert client.delete(f"/api/v1/crm/delivery-slots/{good.json()['id']}", headers=headers).status_code == 200
+
+
+def test_emails_use_operator_sender_and_reply_to_the_right_person(client, monkeypatch):
+    import httpx
+
+    sent = []
+
+    class FakeResponse:
+        status_code = 200
+
+        def json(self):
+            return {"id": "msg-test"}
+
+    async def capturing_provider(self, *args, **kwargs):
+        sent.append(kwargs["json"])
+        return FakeResponse()
+
+    monkeypatch.setattr(mailer.app_settings, "resend_api_key", "test-provider-key")
+    monkeypatch.setattr(mailer.app_settings, "email_from_address", "avisos@operador.mx")
+    monkeypatch.setattr(httpx.AsyncClient, "post", capturing_provider)
+
+    created, payload = create_reservation(client)
+
+    with db_connection() as db:
+        contact = db.execute("SELECT contact_email FROM store_settings LIMIT 1").fetchone()[0]
+    customer = next(body for body in sent if body["to"] == [payload["email"]])
+    business = next(body for body in sent if body["to"] != [payload["email"]])
+    assert all(body["from"].endswith("<avisos@operador.mx>") for body in sent)
+    assert customer.get("reply_to", "") == (contact or "")
+    assert business["reply_to"] == payload["email"]

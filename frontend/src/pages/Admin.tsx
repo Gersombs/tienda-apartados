@@ -2418,7 +2418,7 @@ function SettingsTab({ toast }: { toast: ToastFn }) {
           {textField('color_bg', 'Color de fondo')}
           {textField('color_text', 'Color de texto')}
           {textField('color_accent', 'Color de acento')}
-          {textField('contact_email', 'Correo de contacto')}
+          {textField('contact_email', 'Correo de contacto (aquí te responden las clientas)')}
           {textField('contact_whatsapp', 'WhatsApp público (10 dígitos)')}
           {textField('instagram_url', 'Instagram')}
           {textField('tiktok_url', 'TikTok')}
@@ -2474,8 +2474,7 @@ function SettingsTab({ toast }: { toast: ToastFn }) {
               ['clabe', 'CLABE'],
               ['account_number', 'Número de cuenta'],
               ['alert_recipients', 'Correos para alertas (separados por coma)'],
-              ['notification_from_email', 'Correo remitente verificado'],
-              ['notification_from_name', 'Nombre del remitente'],
+              ['notification_from_name', 'Nombre que verán en los correos'],
             ] as const
           ).map(([key, label]) => (
             <div key={key}>
