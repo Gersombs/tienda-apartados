@@ -2111,7 +2111,10 @@ function CatalogTab({ toast }: { toast: ToastFn }) {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold">{product.name}</p>
                 <p className="precio text-xs text-muted-foreground">
-                  {pesos(product.price)} · {product.variants.length} variantes
+                  {pesos(product.price)} ·{' '}
+                  {product.variants.length === 1 && !product.variants[0].option_value
+                    ? 'pieza única'
+                    : `${product.variants.length} ${product.variants.length === 1 ? 'variante' : 'variantes'}`}
                   {product.is_featured ? ' · destacado' : ''}
                   {!product.is_active ? ' · oculto' : ''}
                   {product.is_archived ? ' · archivado' : ''}
@@ -2140,48 +2143,61 @@ function CatalogTab({ toast }: { toast: ToastFn }) {
 
             <ul className="mt-3 space-y-2 border-t border-border pt-3">
               {product.variants.map((variant) => (
-                <li key={variant.id} className="flex flex-wrap items-center gap-2 text-sm">
-                  <span className="min-w-0 flex-1 truncate">{variant.label || 'Pieza única'}</span>
-                  <span className="precio text-xs text-muted-foreground">
-                    {variant.available_units} libres / {variant.stock} totales
-                    {variant.reserved_stock > 0 ? ` · ${variant.reserved_stock} apartadas` : ''}
-                  </span>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={stockDrafts[variant.id] ?? ''}
-                    onChange={(e) =>
-                      setStockDrafts((prev) => ({ ...prev, [variant.id]: e.target.value }))
-                    }
-                    aria-label={`Nuevo inventario para ${variant.label || 'Pieza única'}`}
-                    className="precio h-9 w-24"
-                  />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={working || !stockDrafts[variant.id]}
-                    onClick={() => adjustStock(variant.id)}
-                    className="rounded-full !bg-transparent text-xs hover:!bg-transparent"
-                  >
-                    Ajustar
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-xs"
-                    onClick={() => setVariantForm({ productId: product.id, variant })}
-                  >
-                    Editar
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-xs text-destructive"
-                    disabled={working}
-                    onClick={() => removeVariant(variant)}
-                  >
-                    Eliminar
-                  </Button>
+                <li key={variant.id} className="rounded-lg border border-border p-2.5 text-sm">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-2">
+                    <span className="font-medium">{variant.label || 'Pieza única'}</span>
+                    <span className="precio text-xs text-muted-foreground">
+                      {variant.available_units} libres de {variant.stock}
+                      {variant.reserved_stock > 0 ? ` · ${variant.reserved_stock} apartadas` : ''}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-end gap-2">
+                    <div>
+                      <Label htmlFor={`stock-${variant.id}`} className="text-xs text-muted-foreground">
+                        Nuevo total de piezas
+                      </Label>
+                      <Input
+                        id={`stock-${variant.id}`}
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        value={stockDrafts[variant.id] ?? ''}
+                        onChange={(e) =>
+                          setStockDrafts((prev) => ({ ...prev, [variant.id]: e.target.value }))
+                        }
+                        className="precio mt-1 h-10 w-24"
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={working || !stockDrafts[variant.id]}
+                      onClick={() => adjustStock(variant.id)}
+                      className="tap rounded-full !bg-transparent text-xs hover:!bg-transparent"
+                    >
+                      Ajustar
+                    </Button>
+                    {/* Una pieza única sólo tiene inventario; no hay nombre que editar. */}
+                    {variant.option_value ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="tap text-xs"
+                        onClick={() => setVariantForm({ productId: product.id, variant })}
+                      >
+                        Editar
+                      </Button>
+                    ) : null}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="tap text-xs text-destructive"
+                      disabled={working}
+                      onClick={() => removeVariant(variant)}
+                    >
+                      Eliminar
+                    </Button>
+                  </div>
                 </li>
               ))}
               {product.variants.length === 0 ? (
@@ -2270,8 +2286,11 @@ function SlotsEditor({
           {slots.map((slot) => (
             <li key={slot.id} className="flex flex-wrap items-center gap-2 text-sm">
               <span className={`precio min-w-0 flex-1 ${slot.is_active ? '' : 'text-muted-foreground line-through'}`}>
-                {WEEKDAY_NAMES[slot.weekday]} {slot.start_time}–{slot.end_time}
-                {slot.capacity > 0 ? ` · cupo ${slot.capacity}` : ' · sin límite'}
+                <span className="block font-medium">{WEEKDAY_NAMES[slot.weekday]}</span>
+                <span className="block text-xs text-muted-foreground">
+                  {slot.start_time}–{slot.end_time}
+                  {slot.capacity > 0 ? ` · cupo ${slot.capacity}` : ' · sin límite'}
+                </span>
               </span>
               <Button
                 size="sm"
@@ -2309,8 +2328,8 @@ function SlotsEditor({
           ))}
         </ul>
       )}
-      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
-        <div className="col-span-2 sm:col-span-1">
+      <div className="mt-2 grid gap-2 sm:grid-cols-5">
+        <div>
           <Label htmlFor={`slot-dia-${pointId}`}>Día</Label>
           <Select
             value={String(draft.weekday)}

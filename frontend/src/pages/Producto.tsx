@@ -305,7 +305,7 @@ export default function Producto() {
                   +
                 </button>
               </div>
-              <Button onClick={handleAdd} className="tap flex-1 rounded-full text-base sm:flex-none sm:px-8">
+              <Button onClick={handleAdd} className="tap basis-full rounded-full text-base sm:basis-auto sm:px-8">
                 {added ? (
                   <>
                     <Check className="mr-1 h-4 w-4" /> Agregado
