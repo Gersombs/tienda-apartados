@@ -22,7 +22,6 @@ from schemas.shop import (
     AvailabilityRequest,
     AvailabilityPublicResponse,
     BootstrapPublicResponse,
-    ContentPublicResponse,
     ConfirmationTokenRequest,
     ProductDetailResponse,
     ProductsPublicResponse,
@@ -440,22 +439,3 @@ async def uploaded_image(
         media_type=row.content_type,
         headers={"Cache-Control": "public, max-age=31536000, immutable"},
     )
-
-
-@router.get("/content", response_model=ContentPublicResponse)
-async def content(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
-    """Textos editables: cómo funciona, preguntas frecuentes, privacidad y políticas."""
-    try:
-        settings = await get_store_settings(db)
-        config = store_settings_public(settings)
-        return {
-            "shop_name": config["shop_name"],
-            "how_it_works": config["how_it_works"],
-            "faq_content": config["faq_content"],
-            "privacy_policy": config["privacy_policy"],
-            "reservation_policy": config["reservation_policy"],
-            "delivery_instructions": config["delivery_instructions"],
-        }
-    except Exception as exc:  # noqa: BLE001
-        logger.error("Error cargando el contenido editable: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail="No pudimos cargar el contenido.")

@@ -109,8 +109,7 @@ def test_public_catalog_has_only_allowlisted_fields(client):
 def test_expected_public_routes_remain_usable(client):
     bootstrap = client.get("/api/v1/shop/bootstrap")
     products = client.get("/api/v1/shop/products", params={"sort": "novedades"})
-    content = client.get("/api/v1/shop/content")
-    assert all(response.status_code == 200 for response in (bootstrap, products, content))
+    assert all(response.status_code == 200 for response in (bootstrap, products))
     slug = products.json()["items"][0]["slug"]
     assert client.get(f"/api/v1/shop/products/{slug}").status_code == 200
 

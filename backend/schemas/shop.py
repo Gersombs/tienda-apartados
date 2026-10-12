@@ -241,12 +241,3 @@ class PublicConfirmationResponse(PublicOutput):
     reservation: ConfirmationReservationPublic
     settings: ConfirmationSettingsPublic
     bank_details: BankDetailsPublic
-
-
-class ContentPublicResponse(PublicOutput):
-    shop_name: str
-    how_it_works: str
-    faq_content: str
-    privacy_policy: str
-    reservation_policy: str
-    delivery_instructions: str

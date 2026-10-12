@@ -13,15 +13,6 @@ import { AVISO_SIN_PAGO, SHOP_NAME_FALLBACK, StoreSettings, api, apiError, setSe
 
 export type ContentKey = 'how_it_works' | 'faq_content' | 'privacy_policy' | 'reservation_policy';
 
-interface ContentResponse {
-  shop_name: string;
-  how_it_works: string;
-  faq_content: string;
-  privacy_policy: string;
-  reservation_policy: string;
-  delivery_instructions: string;
-}
-
 interface Bootstrap {
   settings: StoreSettings;
 }
@@ -68,25 +59,18 @@ function parseFaq(raw: string): { pregunta: string; respuesta: string }[] {
 }
 
 export default function Contenido({ contentKey }: { contentKey: ContentKey }) {
-  const [content, setContent] = useState<ContentResponse | null>(null);
   const [settings, setSettings] = useState<StoreSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const meta = TITULOS[contentKey];
 
-  useEffect(() => {
-    api<Bootstrap>('/api/v1/shop/bootstrap')
-      .then((result) => setSettings(result.settings))
-      .catch(() => undefined);
-  }, []);
-
+  // Los textos vienen en la configuración de la tienda: una sola llamada.
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    api<ContentResponse>('/api/v1/shop/content')
+    api<Bootstrap>('/api/v1/shop/bootstrap')
       .then((result) => {
-        if (!cancelled) setContent(result);
+        if (!cancelled) setSettings(result.settings);
       })
       .catch((e) => {
         if (!cancelled) setError(apiError(e, 'No pudimos cargar este contenido.'));
@@ -97,16 +81,16 @@ export default function Contenido({ contentKey }: { contentKey: ContentKey }) {
     return () => {
       cancelled = true;
     };
-  }, [contentKey]);
+  }, []);
 
   useEffect(() => {
     setSeo({
-      title: `${meta.titulo} — ${content?.shop_name || settings?.shop_name || SHOP_NAME_FALLBACK}`,
+      title: `${meta.titulo} — ${settings?.shop_name || SHOP_NAME_FALLBACK}`,
       description: meta.seo,
     });
-  }, [meta, content, settings]);
+  }, [meta, settings]);
 
-  const raw = content ? content[contentKey] : '';
+  const raw = settings ? settings[contentKey] : '';
   const faqItems = contentKey === 'faq_content' ? parseFaq(raw) : [];
 
   return (
