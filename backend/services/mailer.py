@@ -6,6 +6,7 @@ siempre muestra la realidad y permite reenviar manualmente.
 """
 
 import logging
+from datetime import date
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -17,6 +18,7 @@ from core.time_utils import utc_now
 from models.notifications import Notifications
 from models.reservations import Reservations
 from services.reservation_engine import (
+    WEEKDAY_LABELS,
     get_private_settings,
     get_store_settings,
     load_reservation_items,
@@ -62,6 +64,19 @@ def _escape(value: Any) -> str:
 
 def _peso(value: Any) -> str:
     return f"${money(value):,.0f}".replace(",", ",")
+
+
+MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
+          "septiembre", "octubre", "noviembre", "diciembre"]
+
+
+def _fecha(iso: Any) -> str:
+    """"2026-10-14" -> "miércoles 14 de octubre", como en la página de la clienta."""
+    try:
+        day = date.fromisoformat(str(iso or ""))
+    except ValueError:
+        return str(iso or "")
+    return f"{WEEKDAY_LABELS[day.weekday()].lower()} {day.day} de {MONTHS[day.month - 1]}"
 
 
 def normalize_host(host: Optional[str]) -> str:
@@ -131,7 +146,7 @@ def _delivery_block(reservation: Reservations, instructions: str) -> str:
       <tr><td style="padding:14px 16px;font-size:14px;line-height:1.6;">
         <strong>Punto de entrega</strong><br>{_escape(reservation.delivery_point_name)}<br>
         <span style="color:#6B6257;">{_escape(reservation.delivery_point_reference)}</span><br><br>
-        <strong>Fecha y horario</strong><br>{_escape(reservation.delivery_date)} de {_escape(reservation.slot_start)} a {_escape(reservation.slot_end)}
+        <strong>Fecha y horario</strong><br>{_escape(_fecha(reservation.delivery_date))} de {_escape(reservation.slot_start)} a {_escape(reservation.slot_end)}
         {f'<br><br><strong>Instrucciones</strong><br><span style="color:#6B6257;">{_escape(instructions)}</span>' if instructions else ''}
       </td></tr>
     </table>"""
@@ -222,7 +237,7 @@ def build_business_email(
         WhatsApp: <a href="https://wa.me/52{_escape(whatsapp)}" style="color:#B8123F;">{_escape(whatsapp)}</a><br>
         Correo: {_escape(reservation.customer_email)}<br><br>
         <strong>Entrega</strong><br>{_escape(reservation.delivery_point_name)} — {_escape(reservation.delivery_point_reference)}<br>
-        {_escape(reservation.delivery_date)} de {_escape(reservation.slot_start)} a {_escape(reservation.slot_end)}
+        {_escape(_fecha(reservation.delivery_date))} de {_escape(reservation.slot_start)} a {_escape(reservation.slot_end)}
         {f'<br><br><strong>Notas de la clienta</strong><br>{_escape(reservation.customer_notes)}' if reservation.customer_notes else ''}
       </td></tr>
     </table>"""

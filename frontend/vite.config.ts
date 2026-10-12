@@ -85,13 +85,10 @@ export default defineConfig(({ command, mode }) => {
         hostname: publicSiteUrl,
         readable: true,
         generateRobotsTxt: true,
-        exclude: ['/admin', '/confirmacion', '/apartado', '/auth/callback', '/auth/error', '/auth/logout'],
+        exclude: ['/admin', '/confirmacion', '/apartado'],
+        // Sólo páginas que existen en toda tienda: las categorías cambian según lo que cada una dé de alta.
         dynamicRoutes: [
           '/catalogo',
-          '/categoria/labios',
-          '/categoria/rostro',
-          '/categoria/ojos',
-          '/categoria/cuidado-de-la-piel',
           '/como-funciona',
           '/preguntas-frecuentes',
           '/politicas-de-apartado',
@@ -101,7 +98,7 @@ export default defineConfig(({ command, mode }) => {
           {
             userAgent: '*',
             allow: '/',
-            disallow: ['/admin', '/confirmacion', '/apartado', '/auth/'],
+            disallow: ['/admin', '/confirmacion', '/apartado'],
           },
         ],
       }),

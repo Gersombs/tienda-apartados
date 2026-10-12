@@ -97,7 +97,7 @@ class ProductPayload(AdminInput):
     ingredients: Optional[str] = ""
     usage_instructions: Optional[str] = ""
     category_id: Optional[int] = None
-    price: float
+    price: float = Field(gt=0, le=1_000_000, allow_inf_nan=False)
     tags: Optional[str] = ""
     is_active: bool = True
     is_featured: bool = False
@@ -914,6 +914,13 @@ async def update_product(
     product.ingredients = sanitize_multiline(data.ingredients, 2000)
     product.usage_instructions = sanitize_multiline(data.usage_instructions, 2000)
     product.category_id = data.category_id
+    change = money(money(data.price) - money(product.price))
+    if change:
+        # Una variante con precio propio lo conserva; sólo las que cuestan "lo mismo que el producto" lo siguen.
+        variants = await db.execute(select(Product_variants).where(Product_variants.product_id == product_id))
+        for variant in variants.scalars().all():
+            if money(variant.price_delta):
+                variant.price_delta = money(money(variant.price_delta) - change)
     product.price = money(data.price)
     product.tags = sanitize_text(data.tags, 300)
     product.is_active = data.is_active

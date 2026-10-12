@@ -140,7 +140,7 @@ test('sitemap is environment-based and excludes all private routes', () => {
   assert.match(runtimeConfig, /window\.location\.origin/);
   assert.match(exampleEnv, /^VITE_API_BASE_URL=\r?$/m);
   assert.ok(!vite.includes([["at", "oms"].join(''), 'template', 'com'].join('.')));
-  for (const route of ['/admin', '/confirmacion', '/apartado', '/auth/']) assert.ok(vite.includes(route));
+  for (const route of ['/admin', '/confirmacion', '/apartado']) assert.ok(vite.includes(route));
   assert.doesNotMatch(dynamicRoutes, /['"]\/admin['"]/);
 });
 

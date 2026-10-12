@@ -600,6 +600,46 @@ def test_editing_variant_details_keeps_current_stock(client):
     assert client.delete(f"/api/v1/crm/variants/{variant_id}", headers=headers).status_code == 200
 
 
+def test_changing_product_price_keeps_variant_own_prices(client):
+    csrf = login(client)
+    headers = {"X-CSRF-Token": csrf}
+    product = {"name": "Crema prueba precio", "slug": "crema-prueba-precio", "price": 200}
+    product_id = client.post("/api/v1/crm/products", json=product, headers=headers).json()["id"]
+    for value, delta in (("50 ml", 50), ("30 ml", 0), ("10 ml", -50)):
+        created = client.post(
+            "/api/v1/crm/variants",
+            json={"product_id": product_id, "option_name": "Tamaño", "option_value": value, "stock": 2, "price_delta": delta},
+            headers=headers,
+        )
+        assert created.status_code == 200, created.text
+
+    # Bajar el producto a $40 ya no deja la de $150 en -$10.
+    assert client.put(f"/api/v1/crm/products/{product_id}", json={**product, "price": 40}, headers=headers).status_code == 200
+    variants = client.get("/api/v1/shop/products/crema-prueba-precio").json()["product"]["variants"]
+    assert {v["option_value"]: v["price"] for v in variants} == {"50 ml": 250, "30 ml": 40, "10 ml": 150}
+
+    for bad_price in (0, -5):
+        rejected = client.put(
+            f"/api/v1/crm/products/{product_id}", json={**product, "price": bad_price}, headers=headers
+        )
+        assert rejected.status_code == 422
+    assert client.delete(f"/api/v1/crm/products/{product_id}", headers=headers).status_code == 200
+
+
+def test_emails_write_the_delivery_date_in_spanish():
+    assert mailer._fecha("2026-10-14") == "miércoles 14 de octubre"
+    assert mailer._fecha("2027-01-03") == "domingo 3 de enero"
+    assert mailer._fecha("no-es-fecha") == "no-es-fecha"
+
+
+def test_settings_read_by_the_panel_can_be_saved_back_unchanged(client):
+    csrf = login(client)
+    store = client.get("/api/v1/crm/settings").json()["store"]
+    saved = client.put("/api/v1/crm/settings/store", json=store, headers={"X-CSRF-Token": csrf})
+    assert saved.status_code == 200, saved.text
+    assert client.get("/api/v1/crm/settings").json()["store"] == store
+
+
 def test_slot_times_must_be_zero_padded_hours(client):
     csrf = login(client)
     headers = {"X-CSRF-Token": csrf}
