@@ -30,8 +30,6 @@ RESEND_ENDPOINT = "https://api.resend.com/emails"
 DEFAULT_FROM = "Nébula Beauty MX <onboarding@resend.dev>"
 
 TEMPLATE_RECEIVED = "recibida"
-TEMPLATE_CONFIRMED = "confirmada"
-TEMPLATE_READY = "lista"
 TEMPLATE_CANCELLED = "cancelada"
 TEMPLATE_EXPIRED = "vencida"
 TEMPLATE_BUSINESS_ALERT = "alerta_negocio"
@@ -39,21 +37,15 @@ TEMPLATE_PRIVATE_LINK = "enlace_privado"
 
 CUSTOMER_TEMPLATES = {
     TEMPLATE_RECEIVED,
-    TEMPLATE_CONFIRMED,
-    TEMPLATE_READY,
     TEMPLATE_CANCELLED,
     TEMPLATE_EXPIRED,
     TEMPLATE_PRIVATE_LINK,
 }
 
-# Estado de la reservación -> plantilla que debe enviarse a la clienta.
+# Estado nuevo -> correo automático a la clienta. Sólo la cancelación avisa: los demás
+# estados son control interno y así el plan gratuito de Resend rinde más.
 STATUS_TO_TEMPLATE = {
-    "recibida": TEMPLATE_RECEIVED,
-    "confirmada": TEMPLATE_CONFIRMED,
-    "lista": TEMPLATE_READY,
     "cancelada": TEMPLATE_CANCELLED,
-    "no_show": TEMPLATE_CANCELLED,
-    "vencida": TEMPLATE_EXPIRED,
 }
 
 
@@ -64,6 +56,7 @@ def _escape(value: Any) -> str:
         .replace("<", "&lt;")
         .replace(">", "&gt;")
         .replace('"', "&quot;")
+        .replace("\n", "<br>")
     )
 
 
@@ -180,21 +173,8 @@ def build_customer_email(
         heading = "Tu apartado quedó registrado"
         intro = (
             f"Hola {_escape(reservation.customer_name)}, guardamos tus productos con el folio "
-            f"<strong>{_escape(folio)}</strong>. Te confirmaremos por este mismo correo en cuanto revisemos tu solicitud."
-        )
-    elif template == TEMPLATE_CONFIRMED:
-        subject = f"Apartado confirmado {folio}"
-        heading = "Confirmamos tu apartado"
-        intro = (
-            f"Hola {_escape(reservation.customer_name)}, tu apartado <strong>{_escape(folio)}</strong> "
-            "está confirmado. Te esperamos en el punto y horario que elegiste."
-        )
-    elif template == TEMPLATE_READY:
-        subject = f"Tus productos están listos {folio}"
-        heading = "Todo listo para tu entrega"
-        intro = (
-            f"Hola {_escape(reservation.customer_name)}, ya preparamos los productos de tu apartado "
-            f"<strong>{_escape(folio)}</strong>. Lleva contigo tu app de banco para hacer la transferencia al recibirlos."
+            f"<strong>{_escape(folio)}</strong>. Te esperamos en el punto y horario que elegiste; "
+            "si ya no puedes asistir, cancélalo desde tu enlace privado."
         )
     elif template == TEMPLATE_EXPIRED:
         subject = f"Tu apartado {folio} venció"

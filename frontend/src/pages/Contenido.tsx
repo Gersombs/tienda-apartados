@@ -49,6 +49,12 @@ const TITULOS: Record<ContentKey, { titulo: string; intro: string; seo: string }
   },
 };
 
+const INFO_LINKS: { key: ContentKey; to: string; label: string }[] = [
+  { key: 'how_it_works', to: '/como-funciona', label: 'Cómo funciona' },
+  { key: 'faq_content', to: '/preguntas-frecuentes', label: 'Preguntas frecuentes' },
+  { key: 'reservation_policy', to: '/politicas-de-apartado', label: 'Políticas de apartado' },
+];
+
 function parseFaq(raw: string): { pregunta: string; respuesta: string }[] {
   return raw
     .split('\n')
@@ -163,21 +169,32 @@ export default function Contenido({ contentKey }: { contentKey: ContentKey }) {
         </p>
       )}
 
-      <div className="mt-5 flex flex-wrap gap-2">
+      {/* Siempre los mismos botones; la página actual queda marcada en lugar de desaparecer. */}
+      <nav aria-label="Información de la tienda" className="mt-5 flex flex-wrap gap-2">
         <Button asChild className="tap rounded-full">
           <Link to="/catalogo">Ver catálogo</Link>
         </Button>
-        {contentKey !== 'faq_content' ? (
-          <Button asChild variant="outline" className="tap rounded-full !bg-transparent hover:!bg-transparent">
-            <Link to="/preguntas-frecuentes">Preguntas frecuentes</Link>
-          </Button>
-        ) : null}
-        {contentKey !== 'reservation_policy' ? (
-          <Button asChild variant="outline" className="tap rounded-full !bg-transparent hover:!bg-transparent">
-            <Link to="/politicas-de-apartado">Políticas de apartado</Link>
-          </Button>
-        ) : null}
-      </div>
+        {INFO_LINKS.map((link) =>
+          link.key === contentKey ? (
+            <span
+              key={link.key}
+              aria-current="page"
+              className="tap inline-flex items-center rounded-full bg-secondary px-4 text-sm font-semibold"
+            >
+              {link.label}
+            </span>
+          ) : (
+            <Button
+              key={link.key}
+              asChild
+              variant="outline"
+              className="tap rounded-full !bg-transparent hover:!bg-transparent"
+            >
+              <Link to={link.to}>{link.label}</Link>
+            </Button>
+          ),
+        )}
+      </nav>
     </ShopLayout>
   );
 }

@@ -428,7 +428,7 @@ export function ReservationsTab({ toast }: { toast: ToastFn }) {
                 </span>
               </div>
               {detail.reservation.customer_notes ? (
-                <p className="mt-3 rounded-lg bg-secondary p-3 text-xs leading-relaxed">
+                <p className="mt-3 whitespace-pre-line rounded-lg bg-secondary p-3 text-xs leading-relaxed">
                   Nota de la clienta: {detail.reservation.customer_notes}
                 </p>
               ) : null}
@@ -436,6 +436,9 @@ export function ReservationsTab({ toast }: { toast: ToastFn }) {
 
             <section className="rounded-2xl border border-border bg-card p-4">
               <h3 className="text-sm font-semibold">Cambiar estado</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Sólo «Cancelada» le avisa a la clienta por correo; los demás estados son para tu control.
+              </p>
               <Label htmlFor="estado-nota" className="mt-2 block text-xs text-muted-foreground">
                 Motivo o nota del cambio (opcional)
               </Label>
@@ -447,6 +450,9 @@ export function ReservationsTab({ toast }: { toast: ToastFn }) {
                 className="mt-1 text-sm"
               />
               <div className="mt-2 flex flex-wrap gap-2">
+                {detail.statuses.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Este apartado ya terminó; no tiene más cambios.</p>
+                ) : null}
                 {detail.statuses
                   .filter((s) => s.value !== detail.reservation.status)
                   .map((s) => (

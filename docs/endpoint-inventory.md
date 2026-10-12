@@ -17,6 +17,7 @@ La misma allowlist se aplica en tiempo de ejecución: fuera de estas rutas públ
 | `POST /api/v1/shop/availability` | Público, sólo lectura lógica | Recalcula precio y disponibilidad; no aparta |
 | `POST /api/v1/shop/reservations` | Público, creación | Crea una solicitud con schema estricto, body máximo de 32 KiB y cálculo servidor; requiere rate limit compartido en WAF/proxy antes de producción |
 | `POST /api/v1/shop/confirmation` | Token privado en cuerpo JSON | Confirmación mínima; los datos bancarios sólo aparecen en estados activos |
+| `POST /api/v1/shop/confirmation/cancel` | Token privado en cuerpo JSON | La clienta cancela su apartado activo; libera piezas, lo marca como no leído en el CRM y no envía correos |
 | `GET /api/v1/shop/content` | Público, sólo lectura | Políticas e instrucciones públicas de la tienda |
 | `GET /api/v1/crm/session` | Administrador | Estado de sesión del panel |
 | `GET /api/v1/crm/admins` | Administrador | Administradores sin credenciales/hashes |

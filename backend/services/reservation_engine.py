@@ -56,9 +56,9 @@ STATUS_CANCELLED = "cancelada"
 STATUS_NO_SHOW = "no_show"
 STATUS_EXPIRED = "vencida"
 
+# "confirmada" ya no se ofrece; sólo existe en apartados anteriores al cambio.
 ALL_STATUSES = [
     STATUS_RECEIVED,
-    STATUS_CONFIRMED,
     STATUS_PREPARING,
     STATUS_READY,
     STATUS_DELIVERED,
@@ -83,10 +83,11 @@ ACTIVE_STATUSES = (STATUS_RECEIVED, STATUS_CONFIRMED, STATUS_PREPARING, STATUS_R
 # Estados que liberan el inventario apartado.
 RELEASING_STATUSES = (STATUS_CANCELLED, STATUS_NO_SHOW, STATUS_EXPIRED)
 
+# Cualquier apartado activo puede entregarse directo: no hay que pasar por cada paso.
 ALLOWED_TRANSITIONS = {
-    STATUS_RECEIVED: {STATUS_CONFIRMED, STATUS_PREPARING, STATUS_READY, STATUS_CANCELLED, STATUS_EXPIRED},
-    STATUS_CONFIRMED: {STATUS_PREPARING, STATUS_READY, STATUS_CANCELLED, STATUS_NO_SHOW, STATUS_EXPIRED},
-    STATUS_PREPARING: {STATUS_READY, STATUS_CANCELLED, STATUS_NO_SHOW, STATUS_EXPIRED},
+    STATUS_RECEIVED: {STATUS_PREPARING, STATUS_READY, STATUS_DELIVERED, STATUS_CANCELLED, STATUS_NO_SHOW, STATUS_EXPIRED},
+    STATUS_CONFIRMED: {STATUS_PREPARING, STATUS_READY, STATUS_DELIVERED, STATUS_CANCELLED, STATUS_NO_SHOW, STATUS_EXPIRED},
+    STATUS_PREPARING: {STATUS_READY, STATUS_DELIVERED, STATUS_CANCELLED, STATUS_NO_SHOW, STATUS_EXPIRED},
     STATUS_READY: {STATUS_DELIVERED, STATUS_CANCELLED, STATUS_NO_SHOW, STATUS_EXPIRED},
     STATUS_DELIVERED: set(),
     STATUS_CANCELLED: set(),
@@ -721,6 +722,13 @@ def sanitize_text(value: Any, max_length: int = 400) -> str:
     return text[:max_length]
 
 
+def sanitize_multiline(value: Any, max_length: int = 400) -> str:
+    """Como sanitize_text, pero conserva los saltos de línea (máximo una línea en blanco seguida)."""
+    text = str(value or "").replace("\r\n", "\n").replace("\r", "\n")
+    lines = [re.sub(r"\s{2,}", " ", re.sub(r"[\x00-\x1f\x7f]", " ", line)).strip() for line in text.split("\n")]
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()[:max_length]
+
+
 def update_internal_notes_preserving_alert(
     reservation: Reservations,
     value: Any,
@@ -731,7 +739,7 @@ def update_internal_notes_preserving_alert(
     submitted = str(value or "")
     if preserve_alert:
         submitted = submitted.replace(EXPIRATION_ALERT, "")
-    admin_notes = sanitize_text(submitted, MAX_ADMIN_INTERNAL_NOTES)
+    admin_notes = sanitize_multiline(submitted, MAX_ADMIN_INTERNAL_NOTES)
     reservation.internal_notes = (
         _append_expiration_alert(admin_notes) if preserve_alert else admin_notes
     )
@@ -758,7 +766,7 @@ def validate_contact(payload: Dict[str, Any]) -> Dict[str, str]:
         "full_name": full_name,
         "whatsapp": whatsapp_digits,
         "email": email,
-        "notes": sanitize_text(payload.get("notes"), 400),
+        "notes": sanitize_multiline(payload.get("notes"), 400),
     }
 
 
@@ -1202,7 +1210,7 @@ async def apply_status_change(
     reservation: Reservations,
     new_status: str,
     *,
-    admin_user_id: str,
+    admin_user_id: Optional[str],
     admin_email: str,
     note: str = "",
 ) -> Reservations:
@@ -1255,5 +1263,29 @@ async def apply_status_change(
         admin_email=admin_email,
         note=note,
     )
+    await db.commit()
+    return reservation
+
+
+def next_statuses(status: str) -> List[str]:
+    """Estados a los que puede pasar un apartado, en el orden del flujo."""
+    allowed = ALLOWED_TRANSITIONS.get(status, set())
+    return [s for s in ALL_STATUSES if s in allowed]
+
+
+CANCELLED_BY_CUSTOMER = "Cancelado por la clienta"
+
+
+async def cancel_by_customer(db: AsyncSession, token: str) -> Optional[Reservations]:
+    """La clienta cancela desde su enlace privado. Sin correo: la tienda lo ve como no leído en el CRM."""
+    reservation = await get_confirmation_reservation(db, token)
+    if reservation is None:
+        return None
+    if reservation.status not in ACTIVE_STATUSES:
+        raise ReservationError("Este apartado ya no está activo, así que no se puede cancelar.")
+    reservation = await apply_status_change(
+        db, reservation, STATUS_CANCELLED, admin_user_id=None, admin_email="", note=CANCELLED_BY_CUSTOMER
+    )
+    reservation.is_unread = True
     await db.commit()
     return reservation

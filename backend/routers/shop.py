@@ -37,6 +37,7 @@ from services.reservation_engine import (
     STATUS_LABELS,
     InvalidReservationExpiration,
     ReservationError,
+    cancel_by_customer,
     check_cart_availability,
     create_reservation,
     expire_due_reservations,
@@ -418,6 +419,23 @@ async def confirmation(data: ConfirmationTokenRequest, db: AsyncSession = Depend
         await db.rollback()
         logger.error("Error cargando la confirmación: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail="No pudimos cargar tu confirmación.")
+
+
+@router.post("/confirmation/cancel")
+async def cancel_confirmation(data: ConfirmationTokenRequest, db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
+    """La clienta cancela con su enlace privado: libera las piezas y la tienda lo ve en el CRM, sin correos."""
+    try:
+        reservation = await cancel_by_customer(db, data.token)
+    except ReservationError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail=exc.message) from exc
+    except Exception as exc:  # noqa: BLE001
+        await db.rollback()
+        logger.error("Error cancelando desde la confirmación: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="No pudimos cancelar tu apartado. Intenta de nuevo.")
+    if reservation is None:
+        raise HTTPException(status_code=404, detail="No encontramos esta reservación.")
+    return {"status": reservation.status, "status_label": STATUS_LABELS[reservation.status]}
 
 
 @router.get("/images/{image_id}")

@@ -50,6 +50,7 @@ PUBLIC_ENDPOINTS = frozenset(
         ("POST", "/api/v1/shop/availability"),
         ("POST", "/api/v1/shop/reservations"),
         ("POST", "/api/v1/shop/confirmation"),
+        ("POST", "/api/v1/shop/confirmation/cancel"),
         ("GET", "/api/v1/shop/content"),
         ("GET", "/api/v1/shop/images/{image_id}"),
     }
@@ -207,7 +208,7 @@ async def security_headers(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = (
         "no-referrer"
-        if request.url.path in {"/api/v1/shop/confirmation", "/confirmacion"} or private_token_response
+        if request.url.path.startswith("/api/v1/shop/confirmation") or request.url.path == "/confirmacion" or private_token_response
         else "strict-origin-when-cross-origin"
     )
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"

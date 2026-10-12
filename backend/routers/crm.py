@@ -40,6 +40,7 @@ from services import mailer
 from services.reservation_engine import (
     ACTIVE_STATUSES,
     ALL_STATUSES,
+    CANCELLED_BY_CUSTOMER,
     STATUS_DELIVERED,
     STATUS_EXPIRED,
     STATUS_LABELS,
@@ -52,7 +53,9 @@ from services.reservation_engine import (
     load_reservation_items,
     log_movement,
     money,
+    next_statuses,
     now_mx,
+    sanitize_multiline,
     sanitize_text,
     serialize_reservation,
     store_settings_public,
@@ -246,7 +249,10 @@ async def dashboard(
         reservations = list(result.scalars().all())
 
         active = [r for r in reservations if r.status in ACTIVE_STATUSES]
-        unread = [r for r in reservations if r.is_unread and r.status in ACTIVE_STATUSES]
+        unread = [
+            r for r in reservations
+            if r.is_unread and (r.status in ACTIVE_STATUSES or r.cancel_reason == CANCELLED_BY_CUSTOMER)
+        ]
         today_deliveries = [r for r in active if (r.delivery_date or "") == today]
         upcoming = [r for r in active if today < (r.delivery_date or "") <= horizon]
         expired = [r for r in reservations if r.status == STATUS_EXPIRED]
@@ -461,7 +467,8 @@ async def reservation_detail(
             for h in history_result.scalars().all()
         ],
         "notifications": notifications,
-        "statuses": [{"value": s, "label": STATUS_LABELS[s]} for s in ALL_STATUSES],
+        # Sólo los cambios permitidos: así el panel no ofrece botones que el servidor rechaza.
+        "statuses": [{"value": s, "label": STATUS_LABELS[s]} for s in next_statuses(reservation.status)],
     }
 
 
@@ -569,12 +576,7 @@ async def resend_email(
     template = data.template
     if template not in mailer.CUSTOMER_TEMPLATES and template != mailer.TEMPLATE_BUSINESS_ALERT:
         raise HTTPException(status_code=400, detail="Plantilla de correo no válida.")
-    if template in {
-        mailer.TEMPLATE_RECEIVED,
-        mailer.TEMPLATE_CONFIRMED,
-        mailer.TEMPLATE_READY,
-        mailer.TEMPLATE_PRIVATE_LINK,
-    }:
+    if template in {mailer.TEMPLATE_RECEIVED, mailer.TEMPLATE_PRIVATE_LINK}:
         raise HTTPException(
             status_code=400,
             detail="Genera un enlace privado nuevo para enviar este correo con una confirmación utilizable.",
@@ -922,9 +924,9 @@ async def create_product(
         name=sanitize_text(data.name, 160),
         slug=sanitize_text(data.slug, 160),
         short_description=sanitize_text(data.short_description, 300),
-        full_description=sanitize_text(data.full_description, 4000),
-        ingredients=sanitize_text(data.ingredients, 2000),
-        usage_instructions=sanitize_text(data.usage_instructions, 2000),
+        full_description=sanitize_multiline(data.full_description, 4000),
+        ingredients=sanitize_multiline(data.ingredients, 2000),
+        usage_instructions=sanitize_multiline(data.usage_instructions, 2000),
         category_id=data.category_id,
         price=money(data.price),
         tags=sanitize_text(data.tags, 300),
@@ -969,9 +971,9 @@ async def update_product(
     product.name = sanitize_text(data.name, 160)
     product.slug = sanitize_text(data.slug, 160)
     product.short_description = sanitize_text(data.short_description, 300)
-    product.full_description = sanitize_text(data.full_description, 4000)
-    product.ingredients = sanitize_text(data.ingredients, 2000)
-    product.usage_instructions = sanitize_text(data.usage_instructions, 2000)
+    product.full_description = sanitize_multiline(data.full_description, 4000)
+    product.ingredients = sanitize_multiline(data.ingredients, 2000)
+    product.usage_instructions = sanitize_multiline(data.usage_instructions, 2000)
     product.category_id = data.category_id
     product.price = money(data.price)
     product.tags = sanitize_text(data.tags, 300)
@@ -1545,11 +1547,11 @@ async def update_store_settings(
     settings.instagram_url = sanitize_text(data.instagram_url, 300)
     settings.tiktok_url = sanitize_text(data.tiktok_url, 300)
     settings.facebook_url = sanitize_text(data.facebook_url, 300)
-    settings.how_it_works = sanitize_text(data.how_it_works, 6000)
-    settings.faq_content = sanitize_text(data.faq_content, 8000)
-    settings.privacy_policy = sanitize_text(data.privacy_policy, 12000)
-    settings.reservation_policy = sanitize_text(data.reservation_policy, 12000)
-    settings.delivery_instructions = sanitize_text(data.delivery_instructions, 2000)
+    settings.how_it_works = sanitize_multiline(data.how_it_works, 6000)
+    settings.faq_content = sanitize_multiline(data.faq_content, 8000)
+    settings.privacy_policy = sanitize_multiline(data.privacy_policy, 12000)
+    settings.reservation_policy = sanitize_multiline(data.reservation_policy, 12000)
+    settings.delivery_instructions = sanitize_multiline(data.delivery_instructions, 2000)
     settings.reservation_window_days = max(1, min(60, int(data.reservation_window_days)))
     settings.grace_period_hours = max(0, min(72, int(data.grace_period_hours)))
     settings.is_active = True
@@ -1571,7 +1573,7 @@ async def update_private_settings(
     private.account_holder = sanitize_text(data.account_holder, 160)
     private.clabe = sanitize_text(data.clabe, 40)
     private.account_number = sanitize_text(data.account_number, 40)
-    private.transfer_instructions = sanitize_text(data.transfer_instructions, 2000)
+    private.transfer_instructions = sanitize_multiline(data.transfer_instructions, 2000)
     private.alert_recipients = sanitize_text(data.alert_recipients, 500)
     private.notification_from_name = sanitize_text(data.notification_from_name, 120)
     await db.commit()

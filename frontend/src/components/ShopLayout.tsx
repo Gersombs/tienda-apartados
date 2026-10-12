@@ -204,9 +204,12 @@ export default function ShopLayout({ children, settings, hideCartBar = false }: 
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-screen-xl flex-1 px-4 pb-32 pt-4 md:pb-16">{children}</main>
+      <main className="mx-auto w-full max-w-screen-xl flex-1 px-4 pb-10 pt-4 md:pb-16">{children}</main>
 
-      <footer className="no-imprimir border-t border-border bg-secondary/60 px-4 pb-24 pt-8 md:pb-8">
+      {/* Abajo quedan la navegación fija y, si hay productos, la barra del apartado: el pie deja ese espacio. */}
+      <footer
+        className={`no-imprimir border-t border-border bg-secondary/60 px-4 pt-8 ${showBar ? 'pb-40 md:pb-24' : 'pb-24 md:pb-8'}`}
+      >
         <div className="mx-auto w-full max-w-screen-xl">
           <p className="display text-lg font-semibold">{shopName}</p>
           {settings?.tagline ? (
@@ -267,9 +270,6 @@ export default function ShopLayout({ children, settings, hideCartBar = false }: 
           {settings?.contact_email ? (
             <p className="mt-5 text-xs text-muted-foreground">Contacto: {settings.contact_email}</p>
           ) : null}
-          <p className="mt-1 text-xs text-muted-foreground">
-            Entregas personales en estaciones del Metro y plazas de la Ciudad de México.
-          </p>
         </div>
       </footer>
 

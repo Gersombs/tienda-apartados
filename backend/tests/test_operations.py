@@ -773,3 +773,19 @@ def _category_id() -> int:
 def _reservation_item_id() -> int:
     with db_connection() as db:
         return int(db.execute("SELECT id FROM reservation_items ORDER BY id DESC LIMIT 1").fetchone()[0])
+
+
+def test_long_texts_keep_their_line_breaks(client):
+    from services.reservation_engine import sanitize_multiline
+
+    assert sanitize_multiline("  Paso 1 \r\nPaso 2\n\n\n\nNota\x07  final  ") == "Paso 1\nPaso 2\n\nNota final"
+    headers = {"X-CSRF-Token": login(client)}
+    product_id = _product_id()
+    with db_connection() as db:
+        row = dict(db.execute("SELECT * FROM products WHERE id=?", (product_id,)).fetchone())
+    body = {key: row[key] for key in ("name", "slug", "price", "category_id", "short_description", "ingredients")}
+    body["full_description"] = "Textura cremosa.\n\nDura todo el día."
+    saved = client.put(f"/api/v1/crm/products/{product_id}", json=body, headers=headers)
+    assert saved.status_code == 200, saved.text
+    detail = client.get(f"/api/v1/shop/products/{row['slug']}").json()["product"]
+    assert detail["full_description"] == "Textura cremosa.\n\nDura todo el día."

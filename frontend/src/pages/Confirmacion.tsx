@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import ShopLayout from '@/components/ShopLayout';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialogHost, confirmAction } from '@/components/ui/confirm-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -63,6 +64,7 @@ export default function Confirmacion() {
   const [data, setData] = useState<ConfirmationResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [cancelando, setCancelando] = useState(false);
 
   useEffect(() => {
     // La confirmación es privada: nunca debe indexarse.
@@ -133,6 +135,34 @@ export default function Confirmacion() {
     }
   };
 
+  const cancelarApartado = async () => {
+    if (!data || !reservation) return;
+    const ok = await confirmAction({
+      title: '¿Cancelar tu apartado?',
+      description: 'Tus productos quedarán libres para otras clientas. Si cambias de opinión, tendrás que apartarlos de nuevo.',
+      confirmLabel: 'Sí, cancelar',
+      destructive: true,
+    });
+    if (!ok) return;
+    setCancelando(true);
+    try {
+      const result = await api<{ status: string; status_label: string }>(
+        '/api/v1/shop/confirmation/cancel',
+        'POST',
+        { token },
+      );
+      setData({
+        ...data,
+        reservation: { ...reservation, ...result, cancel_reason: 'Cancelado por la clienta' },
+      });
+      toast({ title: 'Cancelamos tu apartado', description: 'La tienda ya puede ver la cancelación.' });
+    } catch (e) {
+      toast({ title: apiError(e, 'No pudimos cancelar tu apartado.'), variant: 'destructive' });
+    } finally {
+      setCancelando(false);
+    }
+  };
+
   if (loading) {
     return (
       <ShopLayout settings={null} hideCartBar>
@@ -163,6 +193,7 @@ export default function Confirmacion() {
 
   return (
     <ShopLayout settings={null} hideCartBar>
+      <ConfirmDialogHost />
       {esNueva ? (
         <div className="no-imprimir flex items-start gap-3 rounded-2xl border border-primary/30 bg-accent p-4">
           <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
@@ -310,7 +341,7 @@ export default function Confirmacion() {
             ) : null}
           </dl>
           {data.bank_details.transfer_instructions ? (
-            <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+            <p className="mt-3 whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
               {data.bank_details.transfer_instructions}
             </p>
           ) : null}
@@ -378,6 +409,24 @@ export default function Confirmacion() {
           Copiar mi enlace privado
         </Button>
       </div>
+
+      {!cerrada ? (
+        <div className="no-imprimir mt-4 rounded-xl border border-border bg-card p-4">
+          <p className="text-sm font-semibold">¿Ya no puedes asistir?</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            Cancela tu apartado para liberar los productos. La tienda verá la cancelación.
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={cancelando}
+            className="tap mt-2 px-0 text-destructive"
+            onClick={cancelarApartado}
+          >
+            {cancelando ? 'Cancelando…' : 'Cancelar mi apartado'}
+          </Button>
+        </div>
+      ) : null}
 
       <div className="no-imprimir mt-5">
         <Button asChild variant="outline" className="tap rounded-full !bg-transparent hover:!bg-transparent">

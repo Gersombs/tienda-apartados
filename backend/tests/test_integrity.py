@@ -571,3 +571,60 @@ def test_zero_grace_hours_expires_right_when_the_slot_ends(client):
     expires = datetime.fromisoformat(row["expires_at"])
     assert expires.date().isoformat() == payload["delivery_date"]
     assert expires.strftime("%H:%M") == row["slot_end"]
+
+
+def test_customer_can_cancel_with_her_link_and_store_sees_it_unread(client):
+    created, payload = create_reservation(client)
+    variant_id = payload["items"][0]["variant_id"]
+    with db_connection() as db:
+        reservation_id = db.execute("SELECT id FROM reservations WHERE folio=?", (created["folio"],)).fetchone()[0]
+        db.execute("UPDATE reservations SET is_unread=0 WHERE id=?", (reservation_id,))
+        db.commit()
+        reserved_before = db.execute("SELECT reserved_stock FROM product_variants WHERE id=?", (variant_id,)).fetchone()[0]
+        emails_before = db.execute("SELECT COUNT(*) FROM notifications WHERE reservation_id=?", (reservation_id,)).fetchone()[0]
+
+    cancelled = client.post("/api/v1/shop/confirmation/cancel", json={"token": created["private_token"]})
+    assert cancelled.status_code == 200, cancelled.text
+    assert cancelled.json()["status"] == "cancelada"
+    again = client.post("/api/v1/shop/confirmation/cancel", json={"token": created["private_token"]})
+    assert again.status_code == 409
+    assert client.post("/api/v1/shop/confirmation/cancel", json={"token": "x" * 43}).status_code == 404
+
+    with db_connection() as db:
+        row = db.execute("SELECT status, is_unread, cancel_reason FROM reservations WHERE id=?", (reservation_id,)).fetchone()
+        reserved_after = db.execute("SELECT reserved_stock FROM product_variants WHERE id=?", (variant_id,)).fetchone()[0]
+        emails_after = db.execute("SELECT COUNT(*) FROM notifications WHERE reservation_id=?", (reservation_id,)).fetchone()[0]
+    assert (row["status"], row["is_unread"], row["cancel_reason"]) == ("cancelada", 1, "Cancelado por la clienta")
+    assert reserved_after == reserved_before - 1
+    assert emails_after == emails_before  # cancelar ella misma no gasta correos
+
+    login(client)
+    unread = client.get("/api/v1/crm/dashboard").json()["unread"]
+    assert any(item["folio"] == created["folio"] for item in unread)
+
+
+def test_only_cancellation_emails_the_customer_and_panel_offers_only_valid_changes(client):
+    headers = {"X-CSRF-Token": login(client)}
+    created, _payload = create_reservation(client)
+    with db_connection() as db:
+        reservation_id = db.execute("SELECT id FROM reservations WHERE folio=?", (created["folio"],)).fetchone()[0]
+
+    def emails() -> int:
+        with db_connection() as db:
+            return db.execute("SELECT COUNT(*) FROM notifications WHERE reservation_id=?", (reservation_id,)).fetchone()[0]
+
+    detail = client.get(f"/api/v1/crm/reservations/{reservation_id}").json()
+    offered = [s["value"] for s in detail["statuses"]]
+    assert "confirmada" not in offered and "entregada" in offered
+
+    before = emails()
+    for status in ("preparando", "lista"):
+        assert client.post(
+            f"/api/v1/crm/reservations/{reservation_id}/status", json={"status": status}, headers=headers
+        ).status_code == 200
+    assert emails() == before
+    assert client.post(
+        f"/api/v1/crm/reservations/{reservation_id}/status", json={"status": "cancelada"}, headers=headers
+    ).status_code == 200
+    assert emails() == before + 1
+    assert client.get(f"/api/v1/crm/reservations/{reservation_id}").json()["statuses"] == []
