@@ -66,6 +66,7 @@ export default function Catalogo() {
   const availability = searchParams.get('disp') || 'todos';
   const range = searchParams.get('precio') || '0-0';
   const activeCategory = slug || searchParams.get('categoria') || '';
+  const filtered = Boolean(search || activeCategory || availability !== 'todos' || range !== '0-0');
 
   const [searchDraft, setSearchDraft] = useState(search);
 
@@ -351,6 +352,13 @@ export default function Catalogo() {
             <Button className="tap mt-4 rounded-full" onClick={() => window.location.reload()}>
               Volver a intentar
             </Button>
+          </div>
+        ) : items.length === 0 && !filtered ? (
+          <div className="rounded-2xl border border-border bg-card p-6 text-center">
+            <h2 className="text-lg">Muy pronto habrá productos</h2>
+            <p className="mx-auto mt-2 max-w-prose text-sm leading-relaxed text-muted-foreground">
+              Estamos preparando el catálogo. Vuelve en unos días para apartar tus favoritos.
+            </p>
           </div>
         ) : items.length === 0 ? (
           <div className="rounded-2xl border border-border bg-card p-6 text-center">

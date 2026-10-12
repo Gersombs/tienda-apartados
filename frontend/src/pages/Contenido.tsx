@@ -156,9 +156,12 @@ export default function Contenido({ contentKey }: { contentKey: ContentKey }) {
         </article>
       )}
 
-      <p className="mt-5 rounded-xl border border-primary/30 bg-accent px-4 py-3 text-sm font-medium leading-relaxed text-accent-foreground">
-        {AVISO_SIN_PAGO}
-      </p>
+      {/* El texto de la tienda suele traer ya el aviso; no repetirlo. */}
+      {!raw.includes(AVISO_SIN_PAGO) && (
+        <p className="mt-5 rounded-xl border border-primary/30 bg-accent px-4 py-3 text-sm font-medium leading-relaxed text-accent-foreground">
+          {AVISO_SIN_PAGO}
+        </p>
+      )}
 
       <div className="mt-5 flex flex-wrap gap-2">
         <Button asChild className="tap rounded-full">

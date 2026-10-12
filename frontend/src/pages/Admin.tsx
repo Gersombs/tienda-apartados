@@ -401,17 +401,17 @@ function AdminPanel({ session }: { session: SessionState | null }) {
 
       <div className="mx-auto w-full max-w-screen-xl px-4 py-5">
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="dashboard" className="text-xs sm:text-sm">
+          <TabsList className="grid h-auto w-full grid-cols-4">
+            <TabsTrigger value="dashboard" className="min-h-11 px-1 text-xs sm:text-sm">
               Panel
             </TabsTrigger>
-            <TabsTrigger value="reservaciones" className="text-xs sm:text-sm">
+            <TabsTrigger value="reservaciones" className="min-h-11 px-1 text-xs sm:text-sm">
               Reservaciones
             </TabsTrigger>
-            <TabsTrigger value="catalogo" className="text-xs sm:text-sm">
+            <TabsTrigger value="catalogo" className="min-h-11 px-1 text-xs sm:text-sm">
               Catálogo
             </TabsTrigger>
-            <TabsTrigger value="config" className="text-xs sm:text-sm">
+            <TabsTrigger value="config" className="min-h-11 px-1 text-xs sm:text-sm">
               Configuración
             </TabsTrigger>
           </TabsList>
