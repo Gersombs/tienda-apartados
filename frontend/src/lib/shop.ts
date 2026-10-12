@@ -438,6 +438,8 @@ export const cart = {
         next.push(line);
         continue;
       }
+      // Sin piezas en la respuesta = el producto se desactivó o se borró.
+      if (!update.ok && typeof update.available_units !== 'number') continue;
       const max = typeof update.available_units === 'number' ? update.available_units : line.maxUnits;
       if (max <= 0) continue;
       next.push({

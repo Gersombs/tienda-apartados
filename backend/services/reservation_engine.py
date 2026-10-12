@@ -267,7 +267,10 @@ def store_settings_public(settings: Optional[Store_settings]) -> Dict[str, Any]:
         "reservation_policy": settings.reservation_policy or "",
         "delivery_instructions": settings.delivery_instructions or "",
         "reservation_window_days": int(settings.reservation_window_days or DEFAULT_WINDOW_DAYS),
-        "grace_period_hours": int(settings.grace_period_hours or DEFAULT_GRACE_HOURS),
+        # 0 horas es una opción válida: vencer justo al terminar el horario.
+        "grace_period_hours": (
+            DEFAULT_GRACE_HOURS if settings.grace_period_hours is None else int(settings.grace_period_hours)
+        ),
     }
 
 

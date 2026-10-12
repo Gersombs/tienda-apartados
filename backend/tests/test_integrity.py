@@ -551,3 +551,23 @@ def test_availability_keeps_line_order_and_flags_unknown_or_short_lines(client):
     assert lines[1]["product_name"]
     assert lines[1]["unit_price"] >= 0
     assert response.json()["all_ok"] is False
+
+
+def test_zero_grace_hours_expires_right_when_the_slot_ends(client):
+    with db_connection() as db:
+        original = db.execute("SELECT grace_period_hours FROM store_settings ORDER BY id LIMIT 1").fetchone()[0]
+        db.execute("UPDATE store_settings SET grace_period_hours=0")
+        db.commit()
+    try:
+        created, payload = create_reservation(client)
+        with db_connection() as db:
+            row = db.execute(
+                "SELECT expires_at, slot_end FROM reservations WHERE folio=?", (created["folio"],)
+            ).fetchone()
+    finally:
+        with db_connection() as db:
+            db.execute("UPDATE store_settings SET grace_period_hours=?", (original,))
+            db.commit()
+    expires = datetime.fromisoformat(row["expires_at"])
+    assert expires.date().isoformat() == payload["delivery_date"]
+    assert expires.strftime("%H:%M") == row["slot_end"]
