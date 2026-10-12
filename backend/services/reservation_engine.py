@@ -91,7 +91,8 @@ ALLOWED_TRANSITIONS = {
     STATUS_DELIVERED: set(),
     STATUS_CANCELLED: set(),
     STATUS_NO_SHOW: set(),
-    STATUS_EXPIRED: set(),
+    # Se entregó pero nadie lo marcó a tiempo: aún puede registrarse la entrega.
+    STATUS_EXPIRED: {STATUS_DELIVERED},
 }
 
 WEEKDAY_LABELS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
@@ -466,9 +467,14 @@ async def consume_reservation_stock(
     reservation: Reservations,
     *,
     admin_user_id: Optional[str] = None,
+    from_expired: bool = False,
 ) -> None:
-    """Convierte el inventario apartado en salida definitiva. Idempotente."""
-    if reservation.stock_released:
+    """Convierte el inventario apartado en salida definitiva. Idempotente.
+
+    Un apartado vencido ya devolvió sus piezas a la venta (`from_expired`): al
+    entregarlo se descuentan de las disponibles, no de las apartadas.
+    """
+    if reservation.stock_released and not from_expired:
         return
     for item, variant in await _locked_items_and_variants(db, reservation.id):
         if variant is None:
@@ -478,11 +484,18 @@ async def consume_reservation_stock(
         quantity = int(item.quantity or 0)
         current_reserved = int(variant.reserved_stock or 0)
         current_stock = int(variant.stock or 0)
-        if quantity <= 0 or current_reserved < quantity or current_stock < quantity:
+        if from_expired:
+            if quantity <= 0 or available_units(variant) < quantity:
+                raise ReservationError(
+                    f"No quedan piezas libres de «{item.product_name}» para registrar esta entrega: "
+                    "se volvieron a apartar. Ajusta el inventario y vuelve a intentarlo."
+                )
+        elif quantity <= 0 or current_reserved < quantity or current_stock < quantity:
             raise ReservationError(
                 "El inventario reservado es inconsistente; no se aplicó ningún cambio."
             )
-        variant.reserved_stock = current_reserved - quantity
+        else:
+            variant.reserved_stock = current_reserved - quantity
         variant.stock = current_stock - quantity
         await log_movement(
             db,
@@ -1204,8 +1217,12 @@ async def apply_status_change(
     reservation.status = new_status
 
     if new_status == STATUS_DELIVERED:
-        await consume_reservation_stock(db, reservation, admin_user_id=admin_user_id)
+        await consume_reservation_stock(
+            db, reservation, admin_user_id=admin_user_id, from_expired=previous == STATUS_EXPIRED
+        )
         reservation.delivered_at = moment.isoformat()
+        reservation.cancelled_at = None
+        reservation.cancel_reason = None
         if reservation.customer_id:
             customer = (
                 await db.execute(select(Customers).where(Customers.id == reservation.customer_id))

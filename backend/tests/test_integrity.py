@@ -166,6 +166,68 @@ def test_expiration_releases_inventory_exactly_once(client):
     assert releases == 1
 
 
+def test_expired_reservation_can_still_be_delivered_from_free_stock(client):
+    headers = {"X-CSRF-Token": login(client)}
+    with db_connection() as db:
+        category_id = db.execute("SELECT id FROM categories LIMIT 1").fetchone()[0]
+        product_id = db.execute(
+            "INSERT INTO products (name, slug, category_id, price, is_active, is_featured, is_archived, sort_order) VALUES ('Entrega tardía', ?, ?, 50, 1, 0, 0, 999)",
+            (f"tardia-{uuid.uuid4().hex}", category_id),
+        ).lastrowid
+        variant_id = db.execute(
+            "INSERT INTO product_variants (product_id, option_name, option_value, stock, reserved_stock, price_delta, is_active) VALUES (?, '', '', 1, 0, 0, 1)",
+            (product_id,),
+        ).lastrowid
+        db.commit()
+
+    late, _ = create_reservation(client, variant_id=variant_id)
+    with db_connection() as db:
+        late_id = db.execute("SELECT id FROM reservations WHERE folio=?", (late["folio"],)).fetchone()[0]
+        expired_at = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+        db.execute("UPDATE reservations SET expires_at=? WHERE id=?", (expired_at, late_id))
+        db.commit()
+    assert client.get("/api/v1/shop/bootstrap").status_code == 200
+
+    def deliver():
+        return client.post(
+            f"/api/v1/crm/reservations/{late_id}/status", json={"status": "entregada"}, headers=headers
+        )
+
+    def variant():
+        with db_connection() as db:
+            return tuple(db.execute(
+                "SELECT stock, reserved_stock FROM product_variants WHERE id=?", (variant_id,)
+            ).fetchone())
+
+    # La pieza liberada se volvió a apartar: no se puede entregar dos veces la misma.
+    other, _ = create_reservation(client, variant_id=variant_id)
+    blocked = deliver()
+    assert blocked.status_code == 400
+    assert "Ajusta el inventario" in blocked.json()["detail"]
+    assert variant() == (1, 1)
+
+    with db_connection() as db:
+        other_id = db.execute("SELECT id FROM reservations WHERE folio=?", (other["folio"],)).fetchone()[0]
+    assert client.post(
+        f"/api/v1/crm/reservations/{other_id}/status", json={"status": "cancelada"}, headers=headers
+    ).status_code == 200
+
+    assert deliver().status_code == 200
+    assert deliver().status_code == 200  # repetir no descuenta otra vez
+    assert variant() == (0, 0)
+    with db_connection() as db:
+        row = db.execute(
+            "SELECT status, cancel_reason FROM reservations WHERE id=?", (late_id,)
+        ).fetchone()
+        outputs = db.execute(
+            "SELECT COUNT(*) FROM inventory_movements WHERE reservation_id=? AND movement_type='salida'",
+            (late_id,),
+        ).fetchone()[0]
+    assert row["status"] == "entregada"
+    assert row["cancel_reason"] is None
+    assert outputs == 1
+
+
 def test_confirmation_expires_only_its_reservation_and_is_idempotent(client):
     created, payload = create_reservation(client)
     token = created["private_token"]
