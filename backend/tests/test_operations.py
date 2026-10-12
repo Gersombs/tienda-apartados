@@ -701,6 +701,24 @@ def test_new_store_is_blank_branded_and_has_its_admin(tmp_path):
         assert db.execute(
             "SELECT COUNT(*) FROM admin_accounts WHERE normalized_email='luna@example.com'"
         ).fetchone()[0] == 1
+        # Así quedaban los textos guardados antes de conservar los saltos de línea.
+        db.execute("UPDATE store_settings SET how_it_works=replace(how_it_works, char(10), ' ')")
+        db.commit()
+
+    def restore(*flags):
+        return subprocess.run(
+            [sys.executable, "-m", "cli", "restaurar-textos", *flags],
+            cwd=BACKEND_DIR, env=env, text=True, capture_output=True, timeout=60, check=False,
+        )
+
+    preview = restore()
+    assert preview.returncode == 0 and "how_it_works" in preview.stdout and "faq_content" not in preview.stdout
+    with sqlite3.connect(database) as db:
+        assert "\n" not in db.execute("SELECT how_it_works FROM store_settings").fetchone()[0]
+    assert restore("--aplicar").returncode == 0
+    with sqlite3.connect(database) as db:
+        assert "\n" in db.execute("SELECT how_it_works FROM store_settings").fetchone()[0]
+    assert "ya están al día" in restore().stdout
 
 
 def test_new_store_rejects_short_password_before_touching_the_database(tmp_path):

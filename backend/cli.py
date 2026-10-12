@@ -75,6 +75,43 @@ async def create_admin(email: str, name: str, password: str) -> None:
 DEMO_SHOP_NAME = "Nébula Beauty MX"
 
 
+PUBLIC_TEXT_FIELDS = ("how_it_works", "faq_content", "reservation_policy", "delivery_instructions", "privacy_policy")
+
+
+def template_settings(name: str) -> dict:
+    """Configuración de demostración con el nombre de la tienda en lugar del de ejemplo."""
+    template = json.loads((MOCK_DATA_DIR / "store_settings.json").read_text(encoding="utf-8"))[0]
+    return {key: value.replace(DEMO_SHOP_NAME, name) if isinstance(value, str) else value for key, value in template.items()}
+
+
+async def restore_texts(apply: bool) -> None:
+    """Vuelve a poner los textos base (con saltos de línea y el flujo actual) en una tienda existente."""
+    await initialize_database()
+    try:
+        async with db_manager.async_session_maker() as db:
+            store = (await db.execute(select(Store_settings).order_by(Store_settings.id).limit(1))).scalars().first()
+            if store is None:
+                print("Esta base no tiene tienda configurada.")
+                return
+            base = template_settings(store.shop_name)
+            changed = [field for field in PUBLIC_TEXT_FIELDS if (getattr(store, field) or "") != base[field]]
+            if not changed:
+                print("Los textos ya están al día.")
+                return
+            print("Textos que se reemplazarán (se pierden los cambios hechos a mano en ellos):")
+            for field in changed:
+                print(f"  - {field}")
+            if not apply:
+                print("No se cambió nada. Agrega --aplicar para reemplazarlos.")
+                return
+            for field in changed:
+                setattr(store, field, base[field])
+            await db.commit()
+            print("Listo.")
+    finally:
+        await close_database()
+
+
 async def new_store(name: str, contact_email: str, whatsapp: str) -> bool:
     """Crea la configuración de una tienda en blanco: sin catálogo ni puntos de entrega.
 
@@ -89,11 +126,7 @@ async def new_store(name: str, contact_email: str, whatsapp: str) -> bool:
         async with db_manager.async_session_maker() as db:
             if (await db.execute(select(Store_settings.id).limit(1))).first() is not None:
                 return False
-            template = json.loads((MOCK_DATA_DIR / "store_settings.json").read_text(encoding="utf-8"))[0]
-            fields = {
-                key: value.replace(DEMO_SHOP_NAME, name) if isinstance(value, str) else value
-                for key, value in template.items()
-            }
+            fields = template_settings(name)
             fields.update(
                 shop_name=name,
                 tagline="",
@@ -201,9 +234,14 @@ def main() -> int:
         help="Mostrar (o borrar con --borrar) las fotos subidas que ya nada usa",
     )
     images.add_argument("--borrar", action="store_true", help="Borrarlas de verdad")
+    texts = subparsers.add_parser(
+        "restaurar-textos",
+        help="Mostrar (o reemplazar con --aplicar) los textos públicos por los textos base actuales",
+    )
+    texts.add_argument("--aplicar", action="store_true", help="Reemplazarlos de verdad")
     args = parser.parse_args()
 
-    if args.command in {"create-admin", "nueva-tienda", "limpiar-fotos"}:
+    if args.command in {"create-admin", "nueva-tienda", "limpiar-fotos", "restaurar-textos"}:
         # Muestra el destino antes de pedir la contraseña: evita crear la tienda en la base equivocada.
         target = make_url(normalize_database_url(settings.database_url).url)
         print(f"Base de datos: {target.render_as_string(hide_password=True)}")
@@ -234,6 +272,9 @@ def main() -> int:
         return 0
     if args.command == "init-catalog":
         asyncio.run(init_catalog())
+        return 0
+    if args.command == "restaurar-textos":
+        asyncio.run(restore_texts(args.aplicar))
         return 0
     if args.command == "limpiar-fotos":
         asyncio.run(clean_images(args.borrar))
