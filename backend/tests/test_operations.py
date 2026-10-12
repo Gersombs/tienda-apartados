@@ -555,3 +555,58 @@ def test_emails_use_operator_sender_and_reply_to_the_right_person(client, monkey
     assert all(body["from"].endswith("<avisos@operador.mx>") for body in sent)
     assert customer.get("reply_to", "") == (contact or "")
     assert business["reply_to"] == payload["email"]
+
+
+def test_new_store_is_blank_branded_and_has_its_admin(tmp_path):
+    database = tmp_path / "tienda.db"
+    env = os.environ.copy()
+    env.update(
+        {
+            "ENVIRONMENT": "test",
+            "DATABASE_URL": f"sqlite+aiosqlite:///{database.as_posix()}",
+            "AUTO_MIGRATE": "false",
+            "LOAD_SEED_DATA": "false",
+            "APP_DEBUG": "false",
+        }
+    )
+    command = [
+        sys.executable, "-m", "cli", "nueva-tienda",
+        "--nombre", "Luna Cosméticos", "--email", "Luna@Example.com",
+        "--whatsapp", "55 1234 5678", "--password-stdin",
+    ]
+    run = lambda: subprocess.run(  # noqa: E731
+        command, cwd=BACKEND_DIR, env=env, input="contraseña muy segura\n",
+        text=True, capture_output=True, timeout=60, check=False,
+    )
+    first, second = run(), run()
+    assert first.returncode == 0, first.stderr
+    assert "Tienda creada" in first.stdout
+    assert second.returncode == 0 and "no se modificó" in second.stdout
+
+    with sqlite3.connect(database) as db:
+        settings = db.execute(
+            "SELECT shop_name, contact_email, contact_whatsapp, logo_url, how_it_works, privacy_policy "
+            "FROM store_settings"
+        ).fetchall()
+        assert len(settings) == 1
+        shop_name, contact, whatsapp, logo, how_it_works, privacy = settings[0]
+        assert (shop_name, contact, whatsapp, logo) == ("Luna Cosméticos", "luna@example.com", "5512345678", "")
+        assert how_it_works and "Nébula" not in privacy and "Luna Cosméticos" in privacy
+        for table in ("categories", "products", "product_variants", "delivery_points", "delivery_slots", "private_settings"):
+            assert db.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0] == 0, table
+        assert db.execute(
+            "SELECT COUNT(*) FROM admin_accounts WHERE normalized_email='luna@example.com'"
+        ).fetchone()[0] == 1
+
+
+def test_new_store_rejects_short_password_before_touching_the_database(tmp_path):
+    database = tmp_path / "corta.db"
+    env = os.environ.copy()
+    env.update({"ENVIRONMENT": "test", "DATABASE_URL": f"sqlite+aiosqlite:///{database.as_posix()}"})
+    result = subprocess.run(
+        [sys.executable, "-m", "cli", "nueva-tienda", "--nombre", "X", "--email", "x@example.com", "--password-stdin"],
+        cwd=BACKEND_DIR, env=env, input="corta\n", text=True, capture_output=True, timeout=60, check=False,
+    )
+    assert result.returncode != 0
+    assert "12 caracteres" in result.stderr
+    assert not database.exists()
