@@ -11,7 +11,7 @@ import logging
 from datetime import timedelta
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,6 +34,7 @@ from models.products import Products
 from models.reservation_status_history import Reservation_status_history
 from models.reservations import Reservations
 from models.store_settings import Store_settings
+from models.uploaded_images import Uploaded_images
 from schemas.auth import UserResponse
 from services import mailer
 from services.reservation_engine import (
@@ -784,6 +785,44 @@ async def failed_emails(
 
 
 # --------------------------------------------------------------------------- #
+# Fotos
+# --------------------------------------------------------------------------- #
+# El navegador reduce las fotos antes de subirlas; este tope sólo frena abusos.
+MAX_UPLOAD_BYTES = 3 * 1024 * 1024
+
+
+def _image_content_type(data: bytes) -> Optional[str]:
+    """Detecta el formato por su firma; nunca confía en el Content-Type del cliente."""
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
+@router.post("/uploads")
+async def upload_image(
+    request: Request,
+    admin: Admin_accounts = Depends(get_admin),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    data = bytearray()
+    async for chunk in request.stream():
+        data.extend(chunk)
+        if len(data) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="La foto pesa más de 3 MB.")
+    content_type = _image_content_type(bytes(data))
+    if content_type is None:
+        raise HTTPException(status_code=400, detail="Sube una foto JPG, PNG o WebP.")
+    image = Uploaded_images(content_type=content_type, size_bytes=len(data), data=bytes(data))
+    db.add(image)
+    await db.commit()
+    return {"url": f"/api/v1/shop/images/{image.id}"}
+
+
+# --------------------------------------------------------------------------- #
 # Catálogo
 # --------------------------------------------------------------------------- #
 @router.get("/catalog")
@@ -937,20 +976,20 @@ async def update_product(
     product.is_archived = data.is_archived
     product.sort_order = int(data.sort_order or 0)
 
-    if data.images:
-        current = await db.execute(
-            select(Product_images).where(Product_images.product_id == product_id)
-        )
-        for image in current.scalars().all():
-            await db.delete(image)
-        for index, url in enumerate(data.images):
-            clean = sanitize_text(url, 600)
-            if clean:
-                db.add(
-                    Product_images(
-                        product_id=product_id, url=clean, alt_text=product.name, sort_order=index + 1
-                    )
+    # El CRM siempre envía la lista completa, en orden; la primera es la principal.
+    current = await db.execute(
+        select(Product_images).where(Product_images.product_id == product_id)
+    )
+    for image in current.scalars().all():
+        await db.delete(image)
+    for index, url in enumerate(data.images):
+        clean = sanitize_text(url, 600)
+        if clean:
+            db.add(
+                Product_images(
+                    product_id=product_id, url=clean, alt_text=product.name, sort_order=index + 1
                 )
+            )
     await db.commit()
     return {"id": product_id, "slug": product.slug}
 

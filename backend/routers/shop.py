@@ -8,7 +8,7 @@ se devuelven en `/confirmacion` cuando se presenta un token privado válido.
 import logging
 from typing import Annotated, Any, Dict, List, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +16,7 @@ from core.database import get_db
 from core.config import settings as app_settings
 from models.categories import Categories
 from models.products import Products
+from models.uploaded_images import Uploaded_images
 from schemas.shop import (
     AvailabilityRequest,
     AvailabilityPublicResponse,
@@ -411,6 +412,28 @@ async def confirmation(data: ConfirmationTokenRequest, db: AsyncSession = Depend
         await db.rollback()
         logger.error("Error cargando la confirmación: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail="No pudimos cargar tu confirmación.")
+
+
+@router.get("/images/{image_id}")
+async def uploaded_image(
+    image_id: Annotated[int, Path(gt=0)],
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Fotos subidas desde el CRM. Nunca cambian: cada subida recibe un id nuevo."""
+    row = (
+        await db.execute(
+            select(Uploaded_images.content_type, Uploaded_images.data).where(
+                Uploaded_images.id == image_id
+            )
+        )
+    ).first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Imagen no encontrada")
+    return Response(
+        content=row.data,
+        media_type=row.content_type,
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+    )
 
 
 @router.get("/content", response_model=ContentPublicResponse)

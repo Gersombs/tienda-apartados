@@ -139,6 +139,16 @@ export interface BankDetails {
  * ------------------------------------------------------------------ */
 type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
+function csrfToken(): string {
+  const raw = document.cookie
+    .split('; ')
+    .find((entry) => entry.startsWith('nebula_csrf='))
+    ?.split('=')
+    .slice(1)
+    .join('=');
+  return raw ? decodeURIComponent(raw) : '';
+}
+
 export async function api<T>(
   url: string,
   method: Method = 'GET',
@@ -158,13 +168,8 @@ export async function api<T>(
     if (query) target += `${target.includes('?') ? '&' : '?'}${query}`;
   } else {
     headers['Content-Type'] = 'application/json';
-    const csrf = document.cookie
-      .split('; ')
-      .find((entry) => entry.startsWith('nebula_csrf='))
-      ?.split('=')
-      .slice(1)
-      .join('=');
-    if (csrf) headers['X-CSRF-Token'] = decodeURIComponent(csrf);
+    const csrf = csrfToken();
+    if (csrf) headers['X-CSRF-Token'] = csrf;
     options.body = JSON.stringify(data);
   }
 
@@ -214,6 +219,52 @@ export async function downloadApi(
     throw Object.assign(new Error(detail), { status: response.status });
   }
   return response;
+}
+
+const MAX_IMAGE_SIDE = 1600;
+
+/** Reduce la foto en el navegador: las fotos de celular pesan varios MB. */
+async function shrinkImage(file: File): Promise<Blob> {
+  const bitmap = await createImageBitmap(file).catch(() => null);
+  if (!bitmap) throw new Error('No pudimos leer esa foto. Prueba con una foto JPG o PNG.');
+  const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('Tu navegador no pudo procesar la foto.');
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+
+  const encode = (type: string, quality: number) =>
+    new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
+  const webp = await encode('image/webp', 0.82);
+  if (webp && webp.type === 'image/webp') return webp;
+  // Safari no codifica WebP: JPEG con fondo blanco para no ennegrecer transparencias.
+  context.globalCompositeOperation = 'destination-over';
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  const jpeg = await encode('image/jpeg', 0.85);
+  if (!jpeg) throw new Error('Tu navegador no pudo procesar la foto.');
+  return jpeg;
+}
+
+/** Sube una foto desde el CRM y devuelve su URL pública. */
+export async function uploadImage(file: File): Promise<string> {
+  const blob = await shrinkImage(file);
+  const base = getAPIBaseURL().replace(/\/$/, '');
+  const response = await fetch(`${base}/api/v1/crm/uploads`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': blob.type, 'X-CSRF-Token': csrfToken() },
+    body: blob,
+  });
+  const payload = (await response.json().catch(() => null)) as { url?: string; detail?: string } | null;
+  if (!response.ok || !payload?.url) {
+    if (response.status === 401) window.dispatchEvent(new Event('admin-session-expired'));
+    throw new Error(payload?.detail || `Error ${response.status} al subir la foto`);
+  }
+  return payload.url;
 }
 
 export function apiError(error: unknown, fallback = 'Algo salió mal. Intenta de nuevo.'): string {

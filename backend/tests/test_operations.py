@@ -436,3 +436,43 @@ def test_email_network_error_is_logged_as_failed_and_does_not_stop_other_emails(
     assert {mailer.TEMPLATE_RECEIVED, mailer.TEMPLATE_BUSINESS_ALERT} <= templates
     assert all(row["status"] == "fallido" for row in rows)
     assert all("Resend" in row["error_message"] for row in rows)
+
+
+PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+
+
+def test_admin_uploads_photo_and_public_can_fetch_it(client):
+    anonymous = client.post("/api/v1/crm/uploads", content=PNG_BYTES)
+    assert anonymous.status_code == 401
+
+    csrf = login(client)
+    headers = {"X-CSRF-Token": csrf, "Content-Type": "application/octet-stream"}
+    without_csrf = client.post(
+        "/api/v1/crm/uploads", content=PNG_BYTES, headers={"Content-Type": "image/png"}
+    )
+    assert without_csrf.status_code == 403
+
+    uploaded = client.post("/api/v1/crm/uploads", content=PNG_BYTES, headers=headers)
+    assert uploaded.status_code == 200, uploaded.text
+    url = uploaded.json()["url"]
+
+    client.cookies.clear()
+    image = client.get(url)
+    assert image.status_code == 200
+    assert image.content == PNG_BYTES
+    assert image.headers["content-type"] == "image/png"
+    assert "immutable" in image.headers["cache-control"]
+    assert client.get("/api/v1/shop/images/999999").status_code == 404
+
+
+def test_upload_rejects_non_images_and_oversized_files(client):
+    csrf = login(client)
+    headers = {"X-CSRF-Token": csrf}
+    svg = client.post("/api/v1/crm/uploads", content=b"<svg onload=alert(1)>", headers=headers)
+    assert svg.status_code == 400
+    huge = client.post(
+        "/api/v1/crm/uploads",
+        content=PNG_BYTES + b"\x00" * (crm_router.MAX_UPLOAD_BYTES + 1),
+        headers=headers,
+    )
+    assert huge.status_code == 413

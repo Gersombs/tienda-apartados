@@ -11,7 +11,7 @@ import pytest
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 ALEMBIC_INI = BACKEND_DIR / "alembic.ini"
-HEAD_REVISION = "20260825_02"
+HEAD_REVISION = "20261011_03"
 
 
 def _env(database: Path) -> dict[str, str]:

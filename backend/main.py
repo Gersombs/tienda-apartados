@@ -47,6 +47,7 @@ PUBLIC_ENDPOINTS = frozenset(
         ("POST", "/api/v1/shop/reservations"),
         ("POST", "/api/v1/shop/confirmation"),
         ("GET", "/api/v1/shop/content"),
+        ("GET", "/api/v1/shop/images/{image_id}"),
     }
 )
 PROTECTED_AUTH_ENDPOINTS = frozenset(
