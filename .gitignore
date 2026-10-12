@@ -1,0 +1,39 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+*.pem
+*.key
+*.token
+
+# Local databases and logs
+*.db
+*.sqlite
+*.sqlite3
+backend/logs/
+logs/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+.tools/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+.pnpm-store/
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

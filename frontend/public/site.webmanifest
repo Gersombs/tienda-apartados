@@ -1,0 +1,18 @@
+{
+  "name": "Nébula Beauty MX",
+  "short_name": "Nébula Beauty",
+  "description": "Catálogo y solicitudes de apartado de cosméticos.",
+  "lang": "es-MX",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F6F1E7",
+  "theme_color": "#B8123F",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

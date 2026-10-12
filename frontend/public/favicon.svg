@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Nébula Beauty MX">
+  <rect width="64" height="64" rx="16" fill="#B8123F"/>
+  <path d="M17 45V19h7l16 17V19h7v26h-7L24 28v17z" fill="#FFF8EF"/>
+  <path d="m50 10 1.6 4.4L56 16l-4.4 1.6L50 22l-1.6-4.4L44 16l4.4-1.6z" fill="#F5D995"/>
+</svg>

@@ -1,0 +1,34 @@
+[
+    {
+        "name": "Labios",
+        "slug": "labios",
+        "description": "Labiales, glosses y bálsamos con acabados mate, satinado y brillante.",
+        "image_url": "/images/category-labios.webp",
+        "sort_order": 1,
+        "is_active": true
+    },
+    {
+        "name": "Rostro",
+        "slug": "rostro",
+        "description": "Bases, polvos, rubores e iluminadores para un acabado natural.",
+        "image_url": "/images/category-rostro.webp",
+        "sort_order": 2,
+        "is_active": true
+    },
+    {
+        "name": "Ojos",
+        "slug": "ojos",
+        "description": "Sombras, máscaras de pestañas, delineadores y cejas.",
+        "image_url": "/images/category-ojos.webp",
+        "sort_order": 3,
+        "is_active": true
+    },
+    {
+        "name": "Cuidado de la piel",
+        "slug": "cuidado-de-la-piel",
+        "description": "Sérums, humectantes, limpiadores y protección solar.",
+        "image_url": "/images/category-cuidado-piel.webp",
+        "sort_order": 4,
+        "is_active": true
+    }
+]

@@ -1,0 +1,32 @@
+[
+    {
+        "name": "Metro Insurgentes",
+        "kind": "metro",
+        "address": "Av. de los Insurgentes Sur s/n, Roma Norte, Cuauhtémoc",
+        "city": "Ciudad de México",
+        "reference": "Salida Glorieta de Insurgentes, junto al puesto de revistas",
+        "notes": "Punto de demostración editable desde el panel administrativo.",
+        "sort_order": 1,
+        "is_active": true
+    },
+    {
+        "name": "Metro Coyoacán",
+        "kind": "metro",
+        "address": "Av. Universidad 1855, Oxtopulco Universidad, Coyoacán",
+        "city": "Ciudad de México",
+        "reference": "Explanada de la salida oriente, frente a la farmacia",
+        "notes": "Punto de demostración editable desde el panel administrativo.",
+        "sort_order": 2,
+        "is_active": true
+    },
+    {
+        "name": "Plaza Parque Delta",
+        "kind": "plaza",
+        "address": "Av. Cuauhtémoc 462, Piedad Narvarte, Benito Juárez",
+        "city": "Ciudad de México",
+        "reference": "Planta baja, mesas de la zona de cafeterías",
+        "notes": "Punto de demostración editable desde el panel administrativo.",
+        "sort_order": 3,
+        "is_active": true
+    }
+]

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es-MX">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="canonical" href="%VITE_PUBLIC_SITE_URL%/" />
+
+    <title>Nébula Beauty MX | Aparta cosméticos en CDMX</title>
+    <meta
+      name="description"
+      content="Explora cosméticos, envía tu solicitud de apartado y paga únicamente al recibir en un punto de entrega de Ciudad de México."
+    />
+    <meta name="author" content="Nébula Beauty MX" />
+    <meta name="theme-color" content="#B8123F" />
+
+    <meta property="og:title" content="Nébula Beauty MX" />
+    <meta
+      property="og:description"
+      content="Aparta tus cosméticos favoritos. No pagarás nada en este sitio."
+    />
+    <meta property="og:image" content="%VITE_PUBLIC_SITE_URL%/favicon.svg" />
+    <meta property="og:url" content="%VITE_PUBLIC_SITE_URL%/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_MX" />
+
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Nébula Beauty MX" />
+    <meta
+      name="twitter:description"
+      content="Aparta tus cosméticos favoritos. No pagarás nada en este sitio."
+    />
+    <meta name="twitter:image" content="%VITE_PUBLIC_SITE_URL%/favicon.svg" />
+    <script>
+      if (/^\/(admin|confirmacion)(?:\/|$)/.test(window.location.pathname)) {
+        const robots = document.createElement('meta');
+        robots.name = 'robots';
+        robots.content = 'noindex,nofollow,noarchive';
+        document.head.appendChild(robots);
+      }
+    </script>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,162 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Karla:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Marfil cálido con neutros tintados hacia hue 34-36 */
+    --background: 36 38% 96%;
+    --foreground: 24 12% 10%;
+
+    --card: 38 44% 98%;
+    --card-foreground: 24 12% 10%;
+
+    --popover: 38 44% 98%;
+    --popover-foreground: 24 12% 10%;
+
+    /* Rosa cereza */
+    --primary: 344 68% 40%;
+    --primary-foreground: 350 44% 98%;
+
+    --secondary: 34 22% 91%;
+    --secondary-foreground: 24 14% 18%;
+
+    --muted: 34 20% 92%;
+    --muted-foreground: 28 8% 40%;
+
+    --accent: 344 40% 92%;
+    --accent-foreground: 344 68% 28%;
+
+    --destructive: 4 66% 44%;
+    --destructive-foreground: 350 44% 98%;
+
+    --border: 32 17% 85%;
+    --input: 32 17% 85%;
+    --ring: 344 68% 40%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 34 26% 93%;
+    --sidebar-foreground: 24 12% 14%;
+    --sidebar-primary: 344 68% 40%;
+    --sidebar-primary-foreground: 350 44% 98%;
+    --sidebar-accent: 34 22% 88%;
+    --sidebar-accent-foreground: 24 14% 18%;
+    --sidebar-border: 32 17% 82%;
+    --sidebar-ring: 344 68% 40%;
+  }
+
+  .dark {
+    --background: 26 12% 9%;
+    --foreground: 36 22% 92%;
+
+    --card: 26 12% 12%;
+    --card-foreground: 36 22% 92%;
+
+    --popover: 26 12% 12%;
+    --popover-foreground: 36 22% 92%;
+
+    --primary: 344 62% 56%;
+    --primary-foreground: 26 14% 10%;
+
+    --secondary: 26 10% 16%;
+    --secondary-foreground: 36 22% 92%;
+
+    --muted: 26 10% 16%;
+    --muted-foreground: 32 10% 66%;
+
+    --accent: 344 24% 22%;
+    --accent-foreground: 344 50% 86%;
+
+    --destructive: 4 58% 50%;
+    --destructive-foreground: 36 22% 94%;
+
+    --border: 26 10% 20%;
+    --input: 26 10% 20%;
+    --ring: 344 62% 56%;
+
+    --sidebar-background: 26 12% 11%;
+    --sidebar-foreground: 36 22% 92%;
+    --sidebar-primary: 344 62% 56%;
+    --sidebar-primary-foreground: 26 14% 10%;
+    --sidebar-accent: 26 10% 18%;
+    --sidebar-accent-foreground: 36 22% 92%;
+    --sidebar-border: 26 10% 20%;
+    --sidebar-ring: 344 62% 56%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Karla', system-ui, -apple-system, sans-serif;
+    font-kerning: normal;
+    text-wrap: pretty;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: 'Bricolage Grotesque', 'Karla', system-ui, sans-serif;
+    text-wrap: balance;
+  }
+
+  h1 {
+    @apply text-3xl font-bold leading-tight tracking-tight;
+  }
+
+  h2 {
+    @apply text-2xl font-semibold leading-snug tracking-tight;
+  }
+
+  h3 {
+    @apply text-lg font-semibold leading-snug;
+  }
+}
+
+@layer components {
+  .display {
+    font-family: 'Bricolage Grotesque', 'Karla', system-ui, sans-serif;
+  }
+
+  .precio {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Objetivo táctil mínimo de 44 px */
+  .tap {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .chips {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .chips::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media print {
+  .no-imprimir {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+  }
+}

@@ -1,0 +1,18 @@
+packages:
+  - .
+
+# Reject packages published less than 24 hours ago. This keeps the policy that
+# detected the original 18 too-recent lockfile entries active and reviewable.
+minimumReleaseAge: 1440
+
+# CI and non-interactive shells may safely recreate this workspace-local,
+# lockfile-backed modules directory without waiting for a TTY prompt.
+confirmModulesPurge: false
+
+# Keep this project's content-addressable store isolated from a user-global
+# pnpm cache so an interrupted install elsewhere cannot corrupt this workspace.
+storeDir: ../.pnpm-store
+
+allowBuilds:
+  '@swc/core': true
+  esbuild: true

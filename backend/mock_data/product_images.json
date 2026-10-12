@@ -1,0 +1,134 @@
+[
+    {
+        "product_id": 1,
+        "url": "/images/product-lipstick-matte-cherry.webp",
+        "alt_text": "Labial mate en tubo dorado con bala color cereza sobre fondo marfil",
+        "sort_order": 1
+    },
+    {
+        "product_id": 1,
+        "url": "/images/category-labios.webp",
+        "alt_text": "Labiales y gloss acomodados en diagonal sobre papel marfil",
+        "sort_order": 2
+    },
+    {
+        "product_id": 2,
+        "url": "/images/product-lipgloss-shimmer.webp",
+        "alt_text": "Tubo de gloss con aplicador y líquido rosa con destellos",
+        "sort_order": 1
+    },
+    {
+        "product_id": 3,
+        "url": "/images/product-lipbalm-jar.webp",
+        "alt_text": "Bálsamo labial cremoso en tarro de vidrio esmerilado con la tapa a un lado",
+        "sort_order": 1
+    },
+    {
+        "product_id": 4,
+        "url": "/images/product-lipliner-pencil.webp",
+        "alt_text": "Lápiz delineador de labios retráctil en barril mate color vino",
+        "sort_order": 1
+    },
+    {
+        "product_id": 5,
+        "url": "/images/product-foundation-liquid.webp",
+        "alt_text": "Frasco de vidrio esmerilado con base fluida beige y bomba dosificadora",
+        "sort_order": 1
+    },
+    {
+        "product_id": 5,
+        "url": "/images/category-rostro.webp",
+        "alt_text": "Base, rubor abierto y esponja de polvo sobre papel marfil",
+        "sort_order": 2
+    },
+    {
+        "product_id": 6,
+        "url": "/images/product-pressed-powder-compact.webp",
+        "alt_text": "Polvo compacto abierto mostrando el pastel beige y su espejo",
+        "sort_order": 1
+    },
+    {
+        "product_id": 7,
+        "url": "/images/product-blush-compact-rose.webp",
+        "alt_text": "Rubor compacto redondo abierto con pastel rosa cálido",
+        "sort_order": 1
+    },
+    {
+        "product_id": 8,
+        "url": "/images/product-highlighter-stick.webp",
+        "alt_text": "Iluminador en barra color champaña con la tapa retirada",
+        "sort_order": 1
+    },
+    {
+        "product_id": 9,
+        "url": "/images/product-concealer-tube.webp",
+        "alt_text": "Tubo de corrector con aplicador de esponja a un lado",
+        "sort_order": 1
+    },
+    {
+        "product_id": 10,
+        "url": "/images/product-eyeshadow-palette-neutral.webp",
+        "alt_text": "Paleta de sombras abierta con nueve tonos neutros cálidos",
+        "sort_order": 1
+    },
+    {
+        "product_id": 10,
+        "url": "/images/category-ojos.webp",
+        "alt_text": "Paleta de sombras, máscara de pestañas y delineador sobre papel marfil",
+        "sort_order": 2
+    },
+    {
+        "product_id": 11,
+        "url": "/images/product-mascara-volume.webp",
+        "alt_text": "Tubo negro de máscara de pestañas con su cepillo recargado a un lado",
+        "sort_order": 1
+    },
+    {
+        "product_id": 12,
+        "url": "/images/product-eyeliner-liquid-pen.webp",
+        "alt_text": "Delineador líquido de punta de felpa con barril negro brillante",
+        "sort_order": 1
+    },
+    {
+        "product_id": 13,
+        "url": "/images/product-eyebrow-pencil-taupe.webp",
+        "alt_text": "Lápiz de cejas de doble punta con cepillo espiral",
+        "sort_order": 1
+    },
+    {
+        "product_id": 14,
+        "url": "/images/product-serum-vitamin-c.webp",
+        "alt_text": "Frasco ámbar con gotero lleno de sérum dorado",
+        "sort_order": 1
+    },
+    {
+        "product_id": 14,
+        "url": "/images/category-cuidado-piel.webp",
+        "alt_text": "Sérum, crema y limpiador acomodados sobre papel marfil con una ramita",
+        "sort_order": 2
+    },
+    {
+        "product_id": 15,
+        "url": "/images/product-moisturizer-jar.webp",
+        "alt_text": "Tarro de cerámica blanca con crema humectante y la tapa entreabierta",
+        "sort_order": 1
+    },
+    {
+        "product_id": 16,
+        "url": "/images/product-cleanser-gel.webp",
+        "alt_text": "Botella con bomba de gel limpiador facial traslúcido",
+        "sort_order": 1
+    },
+    {
+        "product_id": 17,
+        "url": "/images/product-sunscreen-tinted.webp",
+        "alt_text": "Tubo de protector solar con color en empaque color crema",
+        "sort_order": 1
+    },
+    {
+        "product_id": 18,
+        "url": "/images/product-sheet-mask.webp",
+        "alt_text": "Sobre individual de mascarilla en tela con acabado mate",
+        "sort_order": 1
+    }
+]

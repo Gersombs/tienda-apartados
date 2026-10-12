@@ -1,0 +1,202 @@
+[
+    {
+        "delivery_point_id": 1,
+        "weekday": 0,
+        "start_time": "10:00",
+        "end_time": "12:00",
+        "capacity": 6,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 1,
+        "weekday": 0,
+        "start_time": "17:00",
+        "end_time": "19:00",
+        "capacity": 6,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 1,
+        "weekday": 1,
+        "start_time": "10:00",
+        "end_time": "12:00",
+        "capacity": 6,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 1,
+        "weekday": 1,
+        "start_time": "17:00",
+        "end_time": "19:00",
+        "capacity": 6,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 1,
+        "weekday": 2,
+        "start_time": "10:00",
+        "end_time": "12:00",
+        "capacity": 6,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 1,
+        "weekday": 2,
+        "start_time": "17:00",
+        "end_time": "19:00",
+        "capacity": 6,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 1,
+        "weekday": 3,
+        "start_time": "10:00",
+        "end_time": "12:00",
+        "capacity": 6,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 1,
+        "weekday": 3,
+        "start_time": "17:00",
+        "end_time": "19:00",
+        "capacity": 6,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 1,
+        "weekday": 4,
+        "start_time": "10:00",
+        "end_time": "12:00",
+        "capacity": 6,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 1,
+        "weekday": 4,
+        "start_time": "17:00",
+        "end_time": "19:00",
+        "capacity": 8,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 1,
+        "weekday": 5,
+        "start_time": "11:00",
+        "end_time": "14:00",
+        "capacity": 10,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 2,
+        "weekday": 1,
+        "start_time": "12:00",
+        "end_time": "14:00",
+        "capacity": 5,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 2,
+        "weekday": 2,
+        "start_time": "12:00",
+        "end_time": "14:00",
+        "capacity": 5,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 2,
+        "weekday": 3,
+        "start_time": "12:00",
+        "end_time": "14:00",
+        "capacity": 5,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 2,
+        "weekday": 4,
+        "start_time": "12:00",
+        "end_time": "14:00",
+        "capacity": 5,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 2,
+        "weekday": 4,
+        "start_time": "18:00",
+        "end_time": "20:00",
+        "capacity": 5,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 2,
+        "weekday": 5,
+        "start_time": "11:00",
+        "end_time": "13:00",
+        "capacity": 8,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 2,
+        "weekday": 6,
+        "start_time": "12:00",
+        "end_time": "14:00",
+        "capacity": 8,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 3,
+        "weekday": 0,
+        "start_time": "16:00",
+        "end_time": "18:00",
+        "capacity": 4,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 3,
+        "weekday": 2,
+        "start_time": "16:00",
+        "end_time": "18:00",
+        "capacity": 4,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 3,
+        "weekday": 4,
+        "start_time": "16:00",
+        "end_time": "18:00",
+        "capacity": 6,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 3,
+        "weekday": 4,
+        "start_time": "19:00",
+        "end_time": "21:00",
+        "capacity": 6,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 3,
+        "weekday": 5,
+        "start_time": "12:00",
+        "end_time": "15:00",
+        "capacity": 10,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 3,
+        "weekday": 5,
+        "start_time": "16:00",
+        "end_time": "19:00",
+        "capacity": 10,
+        "is_active": true
+    },
+    {
+        "delivery_point_id": 3,
+        "weekday": 6,
+        "start_time": "13:00",
+        "end_time": "16:00",
+        "capacity": 10,
+        "is_active": true
+    }
+]

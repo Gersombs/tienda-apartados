@@ -1,0 +1,372 @@
+[
+    {
+        "product_id": 1,
+        "option_name": "Tono",
+        "option_value": "Cereza Nébula",
+        "sku": "LAB-MAT-CER",
+        "stock": 12,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 1,
+        "option_name": "Tono",
+        "option_value": "Rosa Palo",
+        "sku": "LAB-MAT-ROS",
+        "stock": 3,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 1,
+        "option_name": "Tono",
+        "option_value": "Terracota",
+        "sku": "LAB-MAT-TER",
+        "stock": 0,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 2,
+        "option_name": "Tono",
+        "option_value": "Transparente",
+        "sku": "GLO-GLW-TRA",
+        "stock": 8,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 2,
+        "option_name": "Tono",
+        "option_value": "Rosa Destello",
+        "sku": "GLO-GLW-ROS",
+        "stock": 5,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 3,
+        "option_name": "Presentación",
+        "option_value": "Tarro de 15 g",
+        "sku": "BAL-NOC-15",
+        "stock": 10,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 4,
+        "option_name": "Tono",
+        "option_value": "Vino",
+        "sku": "DEL-CON-VIN",
+        "stock": 6,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 4,
+        "option_name": "Tono",
+        "option_value": "Nude Cálido",
+        "sku": "DEL-CON-NUD",
+        "stock": 2,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 5,
+        "option_name": "Tono",
+        "option_value": "Marfil",
+        "sku": "BAS-SEG-MAR",
+        "stock": 7,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 5,
+        "option_name": "Tono",
+        "option_value": "Arena",
+        "sku": "BAS-SEG-ARE",
+        "stock": 9,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 5,
+        "option_name": "Tono",
+        "option_value": "Canela",
+        "sku": "BAS-SEG-CAN",
+        "stock": 4,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 5,
+        "option_name": "Tono",
+        "option_value": "Cacao",
+        "sku": "BAS-SEG-CAC",
+        "stock": 2,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 6,
+        "option_name": "Tono",
+        "option_value": "Claro",
+        "sku": "POL-MAT-CLA",
+        "stock": 6,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 6,
+        "option_name": "Tono",
+        "option_value": "Medio",
+        "sku": "POL-MAT-MED",
+        "stock": 8,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 6,
+        "option_name": "Tono",
+        "option_value": "Oscuro",
+        "sku": "POL-MAT-OSC",
+        "stock": 3,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 7,
+        "option_name": "Tono",
+        "option_value": "Durazno Cálido",
+        "sku": "RUB-CAR-DUR",
+        "stock": 7,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 7,
+        "option_name": "Tono",
+        "option_value": "Rosa Cardón",
+        "sku": "RUB-CAR-ROS",
+        "stock": 5,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 7,
+        "option_name": "Tono",
+        "option_value": "Frambuesa",
+        "sku": "RUB-CAR-FRA",
+        "stock": 0,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 8,
+        "option_name": "Tono",
+        "option_value": "Champaña",
+        "sku": "ILU-LUZ-CHA",
+        "stock": 6,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 8,
+        "option_name": "Tono",
+        "option_value": "Oro Rosa",
+        "sku": "ILU-LUZ-ORO",
+        "stock": 4,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 9,
+        "option_name": "Tono",
+        "option_value": "Marfil",
+        "sku": "COR-CUB-MAR",
+        "stock": 8,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 9,
+        "option_name": "Tono",
+        "option_value": "Arena",
+        "sku": "COR-CUB-ARE",
+        "stock": 6,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 9,
+        "option_name": "Tono",
+        "option_value": "Canela",
+        "sku": "COR-CUB-CAN",
+        "stock": 3,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 10,
+        "option_name": "Presentación",
+        "option_value": "9 sombras",
+        "sku": "PAL-TIE-09",
+        "stock": 5,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 11,
+        "option_name": "Color",
+        "option_value": "Negro Intenso",
+        "sku": "MAS-ORB-NEG",
+        "stock": 14,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 11,
+        "option_name": "Color",
+        "option_value": "Café Oscuro",
+        "sku": "MAS-ORB-CAF",
+        "stock": 4,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 12,
+        "option_name": "Color",
+        "option_value": "Negro",
+        "sku": "DEL-TRA-NEG",
+        "stock": 11,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 13,
+        "option_name": "Tono",
+        "option_value": "Rubio Ceniza",
+        "sku": "CEJ-NAT-RUB",
+        "stock": 5,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 13,
+        "option_name": "Tono",
+        "option_value": "Café Medio",
+        "sku": "CEJ-NAT-MED",
+        "stock": 7,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 13,
+        "option_name": "Tono",
+        "option_value": "Café Oscuro",
+        "sku": "CEJ-NAT-OSC",
+        "stock": 6,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 14,
+        "option_name": "Tamaño",
+        "option_value": "30 ml",
+        "sku": "SER-VIT-30",
+        "stock": 9,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 15,
+        "option_name": "Tamaño",
+        "option_value": "50 ml",
+        "sku": "CRE-VEL-50",
+        "stock": 10,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 15,
+        "option_name": "Tamaño",
+        "option_value": "15 ml de viaje",
+        "sku": "CRE-VEL-15",
+        "stock": 6,
+        "reserved_stock": 0,
+        "price_delta": -160,
+        "is_active": true
+    },
+    {
+        "product_id": 16,
+        "option_name": "Tamaño",
+        "option_value": "150 ml",
+        "sku": "GEL-ESP-150",
+        "stock": 8,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 17,
+        "option_name": "Tono",
+        "option_value": "Universal Claro",
+        "sku": "PRO-FPS-UNI",
+        "stock": 7,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 17,
+        "option_name": "Tono",
+        "option_value": "Medio Cálido",
+        "sku": "PRO-FPS-MED",
+        "stock": 3,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    },
+    {
+        "product_id": 18,
+        "option_name": "Presentación",
+        "option_value": "1 pieza",
+        "sku": "MAS-HID-01",
+        "stock": 20,
+        "reserved_stock": 0,
+        "price_delta": 0,
+        "is_active": true
+    }
+]

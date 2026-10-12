@@ -1,0 +1,6 @@
+"""Server-enforced limits for public reservation requests."""
+
+MAX_RESERVATION_BODY_BYTES = 32 * 1024
+MAX_RESERVATION_LINES = 30
+MAX_RESERVATION_UNITS_PER_LINE = 20
+MAX_RESERVATION_TOTAL_UNITS = 60

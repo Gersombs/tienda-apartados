@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /confirmacion
+Disallow: /apartado
+Disallow: /auth/
+
+Sitemap: %VITE_PUBLIC_SITE_URL%/sitemap.xml

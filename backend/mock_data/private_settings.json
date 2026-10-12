@@ -1,0 +1,12 @@
+[
+    {
+        "bank_name": "BBVA México (dato de demostración)",
+        "account_holder": "Nébula Beauty MX (dato de demostración)",
+        "clabe": "012180001234567895",
+        "account_number": "1234567890",
+        "transfer_instructions": "Realiza la transferencia únicamente al momento de recibir tus productos, frente a la persona que te entrega. Usa tu folio como concepto de pago. Estos datos son de demostración y deben reemplazarse en el panel administrativo.",
+        "alert_recipients": "hola@nebulabeauty.mx",
+        "notification_from_email": "",
+        "notification_from_name": "Nébula Beauty MX"
+    }
+]
