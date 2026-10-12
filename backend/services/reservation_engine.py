@@ -906,6 +906,10 @@ async def _create_reservation_locked(db: AsyncSession, payload: Dict[str, Any]) 
     if len(raw_lines) > MAX_RESERVATION_LINES:
         raise ReservationError("Tu apartado tiene demasiados artículos distintos.")
 
+    if db.get_bind().dialect.name == "postgresql":
+        # Pone en fila las solicitudes del mismo correo (doble toque, reintento con red lenta):
+        # sin esto, todas pasan el aviso de duplicado antes de que exista la primera.
+        await db.execute(select(func.pg_advisory_xact_lock(func.hashtext(contact["email"]))))
     await _guard_duplicate(db, contact["email"])
 
     point, slot = await _validate_slot(

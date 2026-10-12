@@ -420,3 +420,12 @@ def test_delivery_date_must_be_written_as_year_month_day(client):
     response = client.post("/api/v1/shop/reservations", json=payload)
     assert response.status_code == 400
     assert "fecha" in response.json()["detail"]
+
+
+def test_long_customer_note_is_rejected_instead_of_silently_cut(client):
+    payload = reservation_payload(client)
+    payload["notes"] = "x" * 401
+    assert client.post("/api/v1/shop/reservations", json=payload).status_code == 422
+    payload["notes"] = "Casa azul, portón negro. " * 16  # 400 caracteres
+    created = client.post("/api/v1/shop/reservations", json=payload)
+    assert created.status_code == 200, created.text

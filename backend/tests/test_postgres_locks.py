@@ -69,14 +69,14 @@ async def _setup(maker, *, stock: int, capacity: int) -> tuple[int, int, str]:
         return point.id, variant.id, day.isoformat()
 
 
-async def _race(maker, point_id: int, variant_id: int, day: str) -> list[str]:
+async def _race(maker, point_id: int, variant_id: int, day: str, email: str = "") -> list[str]:
     async def reserve(index: int) -> str:
         async with maker() as db:
             try:
                 await create_reservation(db, {
                     "full_name": "Clienta Concurrencia",
                     "whatsapp": "5512345678",
-                    "email": f"pg-{index}-{uuid.uuid4().hex}@example.com",
+                    "email": email or f"pg-{index}-{uuid.uuid4().hex}@example.com",
                     "delivery_point_id": point_id,
                     "delivery_date": day,
                     "slot_start": "10:00",
@@ -161,3 +161,14 @@ def test_postgres_admin_stock_adjust_waits_for_a_reservation_in_progress(session
     assert waited
     assert outcome == 400
     assert reserved == 5
+
+
+def test_postgres_same_new_email_twice_at_once_gets_a_clear_duplicate_answer(session_maker):
+    async def scenario():
+        ids = await _setup(session_maker, stock=10, capacity=0)
+        email = f"pg-misma-{uuid.uuid4().hex}@example.com"
+        return await _race(session_maker, *ids, email=email)
+
+    results = asyncio.run(scenario())
+    assert results.count("ok") == 1, results
+    assert all(r == "ok" or "Ya recibimos una solicitud tuya" in r for r in results), results

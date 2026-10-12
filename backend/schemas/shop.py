@@ -29,13 +29,13 @@ class AvailabilityRequest(PublicInput):
 
 
 class ReservationPublicCreate(PublicInput):
-    full_name: str = Field(min_length=2, max_length=160)
+    full_name: str = Field(min_length=2, max_length=120)
     whatsapp: str = Field(min_length=10, max_length=24)
     email: EmailStr
     delivery_point_id: int = Field(gt=0)
     delivery_date: str = Field(min_length=10, max_length=10)
     slot_start: str = Field(min_length=4, max_length=5)
-    notes: str = Field(default="", max_length=1000)
+    notes: str = Field(default="", max_length=400)
     privacy_accepted: bool
     fingerprint: str = Field(default="", max_length=80)
     items: list[CartLine] = Field(min_length=1, max_length=MAX_RESERVATION_LINES)

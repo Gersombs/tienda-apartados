@@ -379,9 +379,6 @@ export function SettingsTab({ toast }: { toast: ToastFn }) {
             toast={toast}
             onChange={(url) => setStore((current) => ({ ...current, hero_image_url: url }))}
           />
-          {textField('color_bg', 'Color de fondo')}
-          {textField('color_text', 'Color de texto')}
-          {textField('color_accent', 'Color de acento')}
           {textField('contact_email', 'Correo de contacto (aquí te responden las clientas)')}
           {textField('contact_whatsapp', 'WhatsApp público (10 dígitos)')}
           {textField('instagram_url', 'Instagram')}

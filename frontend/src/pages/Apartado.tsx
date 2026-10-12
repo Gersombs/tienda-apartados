@@ -440,6 +440,7 @@ export default function Apartado() {
             <Input
               id="nombre"
               value={form.full_name}
+              maxLength={120}
               autoComplete="name"
               onChange={(e) => setForm({ ...form, full_name: e.target.value })}
               onBlur={() => setTouched({ ...touched, full_name: true })}
@@ -596,11 +597,12 @@ export default function Apartado() {
           <div>
             <Label htmlFor="notas">Notas para la entrega (opcional)</Label>
             <p id="notas-ayuda" className="mt-0.5 text-xs text-muted-foreground">
-              Alguna referencia útil para encontrarnos o pedir algo especial.
+              Alguna referencia útil para encontrarnos o pedir algo especial. Máximo 400 caracteres.
             </p>
             <Textarea
               id="notas"
               value={form.notes}
+              maxLength={400}
               rows={3}
               aria-describedby="notas-ayuda"
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
