@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +11,9 @@ import {
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (path) => readFileSync(resolve(root, path), 'utf8');
+// El panel vive en Admin.tsx y una pestaña por archivo en pages/admin/.
+const readAdmin = () =>
+  [read('src/pages/Admin.tsx'), ...readdirSync(resolve(root, 'src/pages/admin')).map((f) => read(`src/pages/admin/${f}`))].join('\n');
 
 
 test('production origin validator accepts only an exact canonical DNS origin', () => {
@@ -78,7 +81,7 @@ test('package exposes reproducible quality commands and pinned toolchain', () =>
 
 
 test('admin uses local cookie session, handles expiry and has no claim flow', () => {
-  const admin = read('src/pages/Admin.tsx');
+  const admin = readAdmin();
   const api = read('src/lib/shop.ts');
   assert.match(admin, /\/api\/v1\/auth\/login/);
   assert.match(admin, /type="password"/);
@@ -146,7 +149,7 @@ test('no functional online-payment or legacy generated API code remains', () => 
   const sources = [
     read('src/App.tsx'),
     read('src/lib/shop.ts'),
-    read('src/pages/Admin.tsx'),
+    readAdmin(),
     read('src/pages/Apartado.tsx'),
     read('vite.config.ts'),
     read('package.json'),
