@@ -176,6 +176,11 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* Un fieldset no se encoge por defecto: una fila de chips deslizable ensanchaba toda la página en celular. */
+  fieldset {
+    min-width: 0;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: 'Karla', system-ui, -apple-system, sans-serif;
