@@ -9,9 +9,11 @@ import json
 import sys
 import uuid
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, make_url, select
 
 from core.auth import hash_password, validate_admin_email
+from core.config import settings
+from core.database_url import normalize_database_url
 from core.database import db_manager
 from models.admin_accounts import Admin_accounts
 from models.admin_sessions import Admin_sessions
@@ -144,7 +146,10 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.command in {"create-admin", "nueva-tienda"}:
-        password = sys.stdin.readline().rstrip("\r\n") if args.password_stdin else getpass.getpass("Contraseña: ")
+        # Muestra el destino antes de pedir la contraseña: evita crear la tienda en la base equivocada.
+        target = make_url(normalize_database_url(settings.database_url).url)
+        print(f"Base de datos: {target.render_as_string(hide_password=True)}")
+        password =sys.stdin.readline().rstrip("\r\n") if args.password_stdin else getpass.getpass("Contraseña: ")
         confirmation = password if args.password_stdin else getpass.getpass("Confirma la contraseña: ")
         if password != confirmation:
             parser.error("Las contraseñas no coinciden.")
