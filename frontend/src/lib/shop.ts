@@ -191,7 +191,14 @@ export async function api<T>(
     if (response.status === 401 && url.startsWith('/api/v1/crm')) {
       window.dispatchEvent(new Event('admin-session-expired'));
     }
-    const detail = (payload as { detail?: string } | null)?.detail || `Error ${response.status}`;
+    // Los rechazos de validación (422) traen una lista, no un texto: dibujarla tumbaría la página.
+    const raw = (payload as { detail?: unknown } | null)?.detail;
+    const detail =
+      typeof raw === 'string' && raw
+        ? raw
+        : response.status === 422
+          ? 'Revisa tus datos: alguno no es válido (por ejemplo, el correo).'
+          : `Error ${response.status}`;
     throw Object.assign(new Error(detail), { data: payload, status: response.status });
   }
   return payload as T;
@@ -277,7 +284,8 @@ export function apiError(error: unknown, fallback = 'Algo salió mal. Intenta de
     status?: number;
     message?: string;
   };
-  return err?.data?.detail || err?.message || fallback;
+  const detail = err?.data?.detail;
+  return (typeof detail === 'string' && detail) || err?.message || fallback;
 }
 
 /* ------------------------------------------------------------------ *
