@@ -48,6 +48,24 @@ def test_spa_shell_and_manifest_show_the_store_name(tmp_path, monkeypatch):
     assert json.loads(manifest) == {"name": 'Ana "<b>"', "short_name": 'Ana "<b>"'}
 
 
+def test_spa_shell_applies_only_known_palettes(tmp_path, monkeypatch):
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    (dist / "index.html").write_text(
+        f'<html lang="es-MX"><head>{frontend_module.DEFAULT_THEME_COLOR}</head></html>', encoding="utf-8"
+    )
+    monkeypatch.setattr(frontend_module, "DIST_DIR", dist.resolve())
+
+    page = frontend_module.serve_frontend("/", None, "nude").body.decode()
+    assert '<html data-paleta="nude" lang="es-MX">' in page and 'content="#A35533"' in page
+    # Una paleta desconocida no se escribe en el HTML: se sirve el archivo tal cual.
+    injected = frontend_module.serve_frontend("/", None, '"><script>')
+    assert Path(injected.path) == dist / "index.html"
+
+    css = (BACKEND_DIR.parent / "frontend" / "src" / "index.css").read_text(encoding="utf-8")
+    assert all(f"[data-paleta='{key}']" in css for key in frontend_module.PALETTES if key != "cereza")
+
+
 def test_spa_html_denies_framing_without_applying_a_broad_asset_csp(
     client, tmp_path, monkeypatch
 ):

@@ -250,15 +250,16 @@ def health_check():
 # Registrada al final: todo lo que no es API ni /health es la SPA o un archivo del build.
 @app.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
 async def spa(path: str, db: AsyncSession = Depends(get_db)):
-    shop_name = None
+    shop_name = palette = None
     if not PurePosixPath(path).suffix or path.endswith((".html", ".webmanifest")):
         try:
             store = await get_store_settings(db)
-            shop_name = store.shop_name if store else None
+            if store:
+                shop_name, palette = store.shop_name, store.color_accent
         except Exception:
-            # Sin base de datos la página sigue cargando con el nombre por defecto.
+            # Sin base de datos la página sigue cargando con el nombre y colores por defecto.
             logging.getLogger(__name__).warning("Shop name unavailable for SPA shell", exc_info=True)
-    return serve_frontend(f"/{path}", shop_name)
+    return serve_frontend(f"/{path}", shop_name, palette)
 
 
 if __name__ == "__main__":

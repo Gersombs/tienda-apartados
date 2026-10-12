@@ -13,9 +13,9 @@ export default function ProductCardItem({ product }: { product: ProductCard }) {
   return (
     <Link
       to={`/producto/${product.slug}`}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-colors hover:md:border-primary/50"
+      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-shadow hover:md:shadow-lg hover:md:shadow-foreground/10"
     >
-      <div className="relative aspect-square overflow-hidden bg-muted">
+      <div className="relative aspect-square overflow-hidden bg-white">
         <img
           src={product.image_url}
           alt={product.image_alt}

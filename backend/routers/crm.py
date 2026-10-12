@@ -17,6 +17,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
+from frontend import PALETTES
 from core.auth import new_secret_token, private_token_hash
 from core.config import settings as app_settings
 from core.csv_security import sanitize_csv_text
@@ -1541,7 +1542,7 @@ async def update_store_settings(
     settings.hero_image_url = sanitize_text(data.hero_image_url, 600)
     settings.color_bg = sanitize_text(data.color_bg, 20)
     settings.color_text = sanitize_text(data.color_text, 20)
-    settings.color_accent = sanitize_text(data.color_accent, 20)
+    settings.color_accent = data.color_accent if data.color_accent in PALETTES else ""
     settings.contact_email = sanitize_text(data.contact_email, 160)
     settings.contact_whatsapp = sanitize_text(data.contact_whatsapp, 20)
     settings.instagram_url = sanitize_text(data.instagram_url, 300)

@@ -12,6 +12,16 @@ import type { DeliveryConfig, SettingsResponse, ToastFn } from './types';
 import { PhotoField } from './photos';
 
 /* -------------------------- Configuración ------------------------ */
+// Mismas claves que PALETTES en backend/frontend.py y [data-paleta] en index.css. '' = Cereza (predeterminada).
+const PALETAS = [
+  { id: '', nombre: 'Cereza', principal: '#B8123F', fondo: '#F7F3EC' },
+  { id: 'nude', nombre: 'Nude', principal: '#A35533', fondo: '#F8F4F0' },
+  { id: 'malva', nombre: 'Malva', principal: '#894D77', fondo: '#F8F4F8' },
+  { id: 'esmeralda', nombre: 'Esmeralda', principal: '#1E674E', fondo: '#F9F7F1' },
+  { id: 'noche', nombre: 'Noche', principal: '#171717', fondo: '#FCFCFC' },
+  { id: 'coral', nombre: 'Coral', principal: '#BF3A22', fondo: '#FDF7F3' },
+];
+
 export type DeliverySlot = DeliveryConfig['slots'][number];
 export type DeliveryPoint = DeliveryConfig['points'][number];
 
@@ -230,6 +240,8 @@ export function SettingsTab({ toast }: { toast: ToastFn }) {
     setWorking(true);
     try {
       await api('/api/v1/crm/settings/store', 'PUT', store);
+      // El servidor pone la paleta al cargar la página; aquí se aplica sin recargar.
+      document.documentElement.dataset.paleta = String(store.color_accent ?? '');
       toast({ title: 'Identidad y contenido guardados' });
     } catch (e) {
       toast({ title: apiError(e), variant: 'destructive' });
@@ -379,6 +391,43 @@ export function SettingsTab({ toast }: { toast: ToastFn }) {
             toast={toast}
             onChange={(url) => setStore((current) => ({ ...current, hero_image_url: url }))}
           />
+          <fieldset className="sm:col-span-2">
+            <legend className="text-sm font-medium">Colores de la tienda</legend>
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {PALETAS.map((paleta) => {
+                // Tiendas viejas guardaron un color hexadecimal: cuenta como la predeterminada.
+                const actual = PALETAS.some((p) => p.id === store.color_accent) ? store.color_accent : '';
+                const elegida = actual === paleta.id;
+                return (
+                  <label
+                    key={paleta.nombre}
+                    className={`tap flex cursor-pointer items-center gap-3 rounded-xl border p-2.5 text-sm ${
+                      elegida ? 'border-primary ring-1 ring-primary' : 'border-border'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="paleta"
+                      className="sr-only"
+                      checked={elegida}
+                      onChange={() => setStore((current) => ({ ...current, color_accent: paleta.id }))}
+                    />
+                    <span
+                      aria-hidden
+                      className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-border"
+                      style={{ background: paleta.fondo }}
+                    >
+                      <span className="h-5 w-5 rounded-full" style={{ background: paleta.principal }} />
+                    </span>
+                    {paleta.nombre}
+                  </label>
+                );
+              })}
+            </div>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Se aplica a toda la tienda al guardar. Las clientas lo ven al recargar la página.
+            </p>
+          </fieldset>
           {textField('contact_email', 'Correo de contacto (aquí te responden las clientas)')}
           {textField('contact_whatsapp', 'WhatsApp público (10 dígitos)')}
           {textField('instagram_url', 'Instagram')}

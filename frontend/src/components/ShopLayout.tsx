@@ -155,15 +155,15 @@ export default function ShopLayout({ children, settings, hideCartBar = false }: 
     <div className="flex min-h-screen flex-col bg-background print:bg-white">
       <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm print:static print:bg-white">
         <div className="mx-auto flex w-full max-w-screen-xl items-center gap-3 px-4 py-3">
-          <Link to="/" className="flex min-w-0 items-center gap-2">
+          <Link to="/" className="flex min-w-0 items-center gap-2.5">
             {settings?.logo_url ? (
               <img
                 src={settings.logo_url}
-                alt={shopName}
-                className="h-9 w-9 flex-shrink-0 rounded-full object-contain"
+                alt=""
+                className="h-10 w-10 flex-shrink-0 rounded-full border border-border bg-card object-contain"
               />
             ) : null}
-            <span className="display truncate text-base font-bold tracking-tight">{shopName}</span>
+            <span className="display truncate text-xl font-bold tracking-tight">{shopName}</span>
           </Link>
 
           <nav className="no-imprimir ml-auto hidden items-center gap-1 md:flex">
@@ -210,67 +210,75 @@ export default function ShopLayout({ children, settings, hideCartBar = false }: 
       <footer
         className={`no-imprimir border-t border-border bg-secondary/60 px-4 pt-8 ${showBar ? 'pb-40 md:pb-24' : 'pb-24 md:pb-8'}`}
       >
-        <div className="mx-auto w-full max-w-screen-xl">
-          <p className="display text-lg font-semibold">{shopName}</p>
-          {settings?.tagline ? (
-            <p className="mt-1 text-sm text-muted-foreground">{settings.tagline}</p>
-          ) : null}
-          <p className="mt-3 max-w-prose text-sm leading-relaxed text-muted-foreground">
-            {AVISO_SIN_PAGO}
-          </p>
-
-          <div className="mt-5 grid gap-2 text-sm sm:grid-cols-2">
-            <Link className="w-fit text-foreground underline-offset-4 hover:underline" to="/como-funciona">
-              Cómo funciona
-            </Link>
-            <Link className="w-fit text-foreground underline-offset-4 hover:underline" to="/preguntas-frecuentes">
-              Preguntas frecuentes
-            </Link>
-            <Link className="w-fit text-foreground underline-offset-4 hover:underline" to="/politicas-de-apartado">
-              Políticas de apartado
-            </Link>
-            <Link className="w-fit text-foreground underline-offset-4 hover:underline" to="/aviso-de-privacidad">
-              Aviso de privacidad
-            </Link>
+        <div className="mx-auto grid w-full max-w-screen-xl gap-8 md:grid-cols-2">
+          <div>
+            <p className="display text-2xl font-bold tracking-tight">{shopName}</p>
+            {settings?.tagline ? (
+              <p className="mt-1 text-sm text-muted-foreground">{settings.tagline}</p>
+            ) : null}
+            <p className="mt-3 max-w-prose text-sm leading-relaxed text-muted-foreground">
+              {AVISO_SIN_PAGO}
+            </p>
           </div>
 
-          <div className="mt-5 flex flex-wrap items-center gap-3">
-            {settings?.contact_whatsapp ? (
-              <a
-                href={whatsappLink(settings.contact_whatsapp, 'Hola, tengo una duda sobre mi apartado.')}
-                target="_blank"
-                rel="noreferrer"
-                className="tap inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-medium"
-              >
-                <MessageCircle className="h-4 w-4" /> WhatsApp
-              </a>
-            ) : null}
-            {settings?.instagram_url ? (
-              <a
-                href={settings.instagram_url}
-                target="_blank"
-                rel="noreferrer"
-                className="tap inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-medium"
-              >
-                <Instagram className="h-4 w-4" /> Instagram
-              </a>
-            ) : null}
-            {settings?.tiktok_url ? (
-              <a
-                href={settings.tiktok_url}
-                target="_blank"
-                rel="noreferrer"
-                className="tap inline-flex items-center rounded-full border border-border bg-background px-4 text-sm font-medium"
-              >
-                TikTok
-              </a>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Ayuda</p>
+            <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+              <Link className="w-fit text-foreground underline-offset-4 hover:underline" to="/como-funciona">
+                Cómo funciona
+              </Link>
+              <Link className="w-fit text-foreground underline-offset-4 hover:underline" to="/preguntas-frecuentes">
+                Preguntas frecuentes
+              </Link>
+              <Link className="w-fit text-foreground underline-offset-4 hover:underline" to="/politicas-de-apartado">
+                Políticas de apartado
+              </Link>
+              <Link className="w-fit text-foreground underline-offset-4 hover:underline" to="/aviso-de-privacidad">
+                Aviso de privacidad
+              </Link>
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              {settings?.contact_whatsapp ? (
+                <a
+                  href={whatsappLink(settings.contact_whatsapp, 'Hola, tengo una duda sobre mi apartado.')}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="tap inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-medium"
+                >
+                  <MessageCircle className="h-4 w-4" /> WhatsApp
+                </a>
+              ) : null}
+              {settings?.instagram_url ? (
+                <a
+                  href={settings.instagram_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="tap inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-medium"
+                >
+                  <Instagram className="h-4 w-4" /> Instagram
+                </a>
+              ) : null}
+              {settings?.tiktok_url ? (
+                <a
+                  href={settings.tiktok_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="tap inline-flex items-center rounded-full border border-border bg-background px-4 text-sm font-medium"
+                >
+                  TikTok
+                </a>
+              ) : null}
+            </div>
+
+            {settings?.contact_email ? (
+              <p className="mt-5 text-xs text-muted-foreground">Contacto: {settings.contact_email}</p>
             ) : null}
           </div>
-
-          {settings?.contact_email ? (
-            <p className="mt-5 text-xs text-muted-foreground">Contacto: {settings.contact_email}</p>
-          ) : null}
         </div>
+        <p className="mx-auto mt-8 w-full max-w-screen-xl border-t border-border pt-4 text-xs text-muted-foreground">
+          © {new Date().getFullYear()} {shopName}
+        </p>
       </footer>
 
       {showBar && (

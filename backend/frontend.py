@@ -20,6 +20,18 @@ STATIC_MIME_TYPES = {
 }
 DEFAULT_SHOP_NAME = "Nébula Beauty MX"
 
+# Paletas que la tienda puede elegir (color_accent) y su color de barra del navegador.
+# Las variables de cada una viven en frontend/src/index.css bajo [data-paleta="..."].
+PALETTES = {
+    "cereza": "#B8123F",
+    "nude": "#A35533",
+    "malva": "#894D77",
+    "esmeralda": "#1E674E",
+    "noche": "#171717",
+    "coral": "#BF3A22",
+}
+DEFAULT_THEME_COLOR = '<meta name="theme-color" content="#B8123F" />'
+
 
 def _json_text(value: str) -> str:
     return json.dumps(value, ensure_ascii=False)[1:-1]
@@ -51,7 +63,7 @@ def _content_type(asset: Path) -> str:
     return STATIC_MIME_TYPES.get(asset.suffix.lower()) or mimetypes.guess_type(asset.name)[0] or "application/octet-stream"
 
 
-def serve_frontend(path: str, shop_name: str | None = None) -> Response:
+def serve_frontend(path: str, shop_name: str | None = None, palette: str | None = None) -> Response:
     if path.startswith("/api/"):
         return Response(status_code=404, content="Not found")
     if not DIST_DIR.is_dir():
@@ -90,10 +102,16 @@ def serve_frontend(path: str, shop_name: str | None = None) -> Response:
                 "X-Robots-Tag": "noindex, nofollow, noarchive",
             }
         )
-    if shop_name and asset.name in BRANDED_FILES:
+    palette = palette if palette in PALETTES else None
+    if (shop_name or palette) and asset.name in BRANDED_FILES:
         # El build trae el nombre por defecto; cada tienda muestra el suyo (título, vista previa al compartir, manifest).
         branded = asset.read_text(encoding="utf-8")
-        for default, escape in BRANDED_FILES[asset.name]:
+        for default, escape in BRANDED_FILES[asset.name] if shop_name else []:
             branded = branded.replace(default, escape(shop_name))
+        if palette and asset.name == "index.html":
+            # En el HTML para que los colores salgan bien desde el primer pintado, también en el enlace privado.
+            branded = branded.replace("<html ", f'<html data-paleta="{palette}" ', 1).replace(
+                DEFAULT_THEME_COLOR, f'<meta name="theme-color" content="{PALETTES[palette]}" />'
+            )
         return Response(branded, media_type=content_type, headers=headers)
     return FileResponse(asset, media_type=content_type, headers=headers)

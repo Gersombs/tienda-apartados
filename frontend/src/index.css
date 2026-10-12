@@ -48,6 +48,85 @@
     --sidebar-ring: 344 68% 40%;
   }
 
+  /* Paletas que elige la tienda (el servidor pone data-paleta en <html>; ver backend/frontend.py PALETTES).
+     El color principal lleva texto blanco encima: mantenerlo con contraste de al menos 4.5:1. */
+  [data-paleta='nude'] {
+    --background: 30 33% 96%;
+    --card: 30 40% 98%;
+    --popover: 30 40% 98%;
+    --primary: 18 52% 42%;
+    --ring: 18 52% 42%;
+    --secondary: 26 24% 90%;
+    --muted: 26 22% 91%;
+    --accent: 20 45% 91%;
+    --accent-foreground: 18 52% 28%;
+    --border: 26 18% 84%;
+    --input: 26 18% 84%;
+  }
+
+  [data-paleta='malva'] {
+    --background: 300 20% 97%;
+    --card: 300 25% 99%;
+    --popover: 300 25% 99%;
+    --primary: 318 28% 42%;
+    --ring: 318 28% 42%;
+    --secondary: 300 14% 92%;
+    --muted: 300 12% 93%;
+    --muted-foreground: 300 6% 40%;
+    --accent: 310 30% 92%;
+    --accent-foreground: 318 30% 28%;
+    --border: 300 10% 86%;
+    --input: 300 10% 86%;
+  }
+
+  [data-paleta='esmeralda'] {
+    --background: 45 33% 96%;
+    --card: 45 40% 98%;
+    --popover: 45 40% 98%;
+    --primary: 160 55% 26%;
+    --ring: 160 55% 26%;
+    --secondary: 90 14% 90%;
+    --muted: 80 12% 91%;
+    --accent: 155 30% 90%;
+    --accent-foreground: 160 55% 20%;
+    --border: 60 12% 84%;
+    --input: 60 12% 84%;
+  }
+
+  [data-paleta='noche'] {
+    --background: 0 0% 99%;
+    --foreground: 0 0% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --ring: 0 0% 9%;
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 0 0% 12%;
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 0 0% 92%;
+    --accent-foreground: 0 0% 9%;
+    --border: 0 0% 88%;
+    --input: 0 0% 88%;
+  }
+
+  [data-paleta='coral'] {
+    --background: 24 60% 97%;
+    --card: 24 70% 99%;
+    --popover: 24 70% 99%;
+    --primary: 6 70% 44%;
+    --ring: 6 70% 44%;
+    --secondary: 20 40% 91%;
+    --muted: 20 36% 92%;
+    --accent: 14 80% 92%;
+    --accent-foreground: 6 70% 30%;
+    --border: 20 26% 85%;
+    --input: 20 26% 85%;
+  }
+
   .dark {
     --background: 26 12% 9%;
     --foreground: 36 22% 92%;

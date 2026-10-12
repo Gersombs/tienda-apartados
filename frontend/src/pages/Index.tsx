@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, CalendarCheck, MapPin, Sparkles } from 'lucide-react';
+import { ArrowRight, CalendarCheck, Handshake, MapPin, ShieldCheck, Sparkles, Wallet } from 'lucide-react';
 import ShopLayout from '@/components/ShopLayout';
 import ProductCardItem from '@/components/ProductCardItem';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,15 @@ const PASOS = [
     texto: 'Nos vemos en el punto acordado y ahí realizas la transferencia del total.',
   },
 ];
+
+const CONFIANZA = [
+  { icon: ShieldCheck, texto: 'Sin anticipo' },
+  { icon: Handshake, texto: 'Entrega en persona' },
+  { icon: Wallet, texto: 'Pagas al recibir' },
+];
+
+// Clases fijas para que Tailwind las incluya; con pocas categorías la rejilla no queda medio vacía.
+const COLUMNAS_CATEGORIAS = ['sm:grid-cols-1', 'sm:grid-cols-1', 'sm:grid-cols-2', 'sm:grid-cols-3', 'sm:grid-cols-4'];
 
 export default function Index() {
   const [data, setData] = useState<Bootstrap | null>(null);
@@ -113,12 +122,17 @@ export default function Index() {
               <Link to="/como-funciona">Cómo funciona</Link>
             </Button>
           </div>
-          <p className="mt-5 rounded-xl border border-border bg-card px-4 py-3 text-sm leading-relaxed">
-            {AVISO_SIN_PAGO}
-          </p>
+          <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm font-medium">
+            {CONFIANZA.map(({ icon: Icon, texto }) => (
+              <li key={texto} className="flex items-center gap-1.5">
+                <Icon className="h-4 w-4 text-primary" /> {texto}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{AVISO_SIN_PAGO}</p>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-border bg-muted lg:col-span-2">
+        <div className="overflow-hidden rounded-3xl bg-muted shadow-xl shadow-foreground/10 lg:col-span-2">
           {data?.settings.hero_image_url ? (
             <img
               src={data.settings.hero_image_url}
@@ -143,21 +157,27 @@ export default function Index() {
             ))}
           </div>
         ) : (
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div
+            className={`mt-4 grid grid-cols-2 gap-3 ${COLUMNAS_CATEGORIAS[Math.min(data.categories.length, 4)]}`}
+          >
             {data.categories.map((category) => (
               <Link
                 key={category.slug}
                 to={`/categoria/${category.slug}`}
-                className="group relative overflow-hidden rounded-2xl border border-border"
+                className="group relative overflow-hidden rounded-2xl"
               >
                 <img
                   src={category.image_url}
-                  alt={category.name}
+                  alt=""
                   loading="lazy"
-                  className="aspect-[4/3] w-full object-cover transition-transform duration-500 group-hover:md:scale-105"
+                  className={`w-full object-cover transition-transform duration-500 group-hover:md:scale-105 ${
+                    data.categories.length < 3 ? 'aspect-[4/3] sm:aspect-[2/1]' : 'aspect-[4/3]'
+                  }`}
                 />
-                <span className="absolute inset-x-0 bottom-0 bg-foreground/70 px-3 py-2 text-sm font-semibold text-background">
+                <span className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
+                <span className="display absolute inset-x-0 bottom-0 flex items-center justify-between p-3 text-base font-semibold text-white sm:p-4 sm:text-lg">
                   {category.name}
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:md:translate-x-1" />
                 </span>
               </Link>
             ))}
@@ -196,20 +216,22 @@ export default function Index() {
       </section>
 
       {/* Cómo funciona */}
-      <section className="mt-12 rounded-2xl border border-border bg-card p-5 sm:p-7">
+      <section className="mt-12 rounded-3xl bg-accent/60 p-5 sm:p-8">
         <h2>Así funciona tu apartado</h2>
-        <div className="mt-5 grid gap-5 sm:grid-cols-3">
+        <div className="mt-6 grid gap-6 sm:grid-cols-3">
           {PASOS.map((paso, index) => {
             const Icon = paso.icon;
             return (
               <div key={paso.titulo}>
-                <div className="flex items-center gap-2">
-                  <Icon className="h-5 w-5 text-primary" />
-                  <span className="precio text-xs font-bold text-muted-foreground">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <span className="precio text-xs font-bold tracking-wider text-accent-foreground">
                     PASO {index + 1}
                   </span>
                 </div>
-                <h3 className="mt-2 text-base">{paso.titulo}</h3>
+                <h3 className="mt-3 text-base">{paso.titulo}</h3>
                 <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{paso.texto}</p>
               </div>
             );
