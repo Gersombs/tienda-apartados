@@ -10,7 +10,8 @@ ARG VITE_PUBLIC_SITE_URL
 ARG PUBLIC_SITE_URL
 ARG ALLOWED_ORIGINS
 ENV VITE_API_BASE_URL=""
-RUN pnpm build
+RUN test -n "$VITE_PUBLIC_SITE_URL" || { echo "Falta la variable VITE_PUBLIC_SITE_URL en el servicio (https://dominio-de-la-tienda)."; exit 1; } \
+ && pnpm build
 
 FROM python:3.12-slim
 WORKDIR /app/backend
