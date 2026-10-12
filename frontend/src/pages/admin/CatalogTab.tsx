@@ -693,7 +693,9 @@ export function CatalogTab({ toast }: { toast: ToastFn }) {
               images={editing.images}
               name={editing.name}
               toast={toast}
-              onChange={(images) => setEditing((current) => (current ? { ...current, images } : current))}
+              onChange={(update) =>
+                setEditing((current) => (current ? { ...current, images: update(current.images) } : current))
+              }
             />
           </div>
 

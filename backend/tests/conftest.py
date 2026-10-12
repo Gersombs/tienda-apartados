@@ -99,7 +99,6 @@ def reservation_payload(client: TestClient, *, variant_id: int | None = None, em
         "slot_start": slot["start_time"],
         "notes": "",
         "privacy_accepted": True,
-        "fingerprint": uuid.uuid4().hex,
         "items": [{"variant_id": variant_id, "quantity": 1}],
     }
 

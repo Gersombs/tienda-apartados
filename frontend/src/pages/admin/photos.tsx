@@ -114,7 +114,8 @@ export function ProductPhotos({
   images: CatalogProduct['images'];
   name: string;
   toast: ToastFn;
-  onChange: (images: CatalogProduct['images']) => void;
+  /** Recibe un cambio sobre la lista actual: una subida lenta no deshace lo que se quitó mientras tanto. */
+  onChange: (update: (images: CatalogProduct['images']) => CatalogProduct['images']) => void;
 }) {
   return (
     <div className="sm:col-span-2">
@@ -135,7 +136,7 @@ export function ProductPhotos({
                 <button
                   type="button"
                   className="text-xs underline"
-                  onClick={() => onChange([image, ...images.filter((_, i) => i !== index)])}
+                  onClick={() => onChange((current) => [image, ...current.filter((i) => i !== image)])}
                 >
                   Principal
                 </button>
@@ -144,7 +145,7 @@ export function ProductPhotos({
                 type="button"
                 className="text-xs text-destructive underline"
                 aria-label={`Quitar foto ${index + 1}`}
-                onClick={() => onChange(images.filter((_, i) => i !== index))}
+                onClick={() => onChange((current) => current.filter((i) => i !== image))}
               >
                 Quitar
               </button>
@@ -159,7 +160,7 @@ export function ProductPhotos({
           multiple
           toast={toast}
           onUploaded={(urls) =>
-            onChange([...images, ...urls.map((url) => ({ id: 0, url, alt_text: name }))])
+            onChange((current) => [...current, ...urls.map((url) => ({ id: 0, url, alt_text: name }))])
           }
         />
       </div>

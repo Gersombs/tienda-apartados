@@ -37,8 +37,6 @@ class ReservationPublicCreate(PublicInput):
     slot_start: str = Field(min_length=4, max_length=5)
     notes: str = Field(default="", max_length=400)
     privacy_accepted: bool
-    # shortcut: se acepta y se ignora para que una pestaña abierta con el código anterior no falle; borrarlo en el siguiente cambio.
-    fingerprint: str = Field(default="", max_length=80)
     items: list[CartLine] = Field(min_length=1, max_length=MAX_RESERVATION_LINES)
 
     @field_validator("privacy_accepted")

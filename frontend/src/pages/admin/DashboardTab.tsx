@@ -52,7 +52,7 @@ export function DashboardTab({ onOpenReservations }: { onOpenReservations: () =>
   return (
     <div className="space-y-5">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Nuevas sin leer" value={String(data.unread_count)} hint="Requieren confirmación" />
+        <StatCard label="Nuevas sin leer" value={String(data.unread_count)} hint="Apartados nuevos y cancelaciones por revisar" />
         <StatCard label="Entregas de hoy" value={String(data.today_count)} />
         <StatCard label="Próximas 7 días" value={String(data.upcoming_count)} />
         <StatCard label="Vencidas" value={String(data.expired_count)} hint="Inventario liberado" />

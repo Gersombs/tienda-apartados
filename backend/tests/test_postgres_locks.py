@@ -82,7 +82,6 @@ async def _race(maker, point_id: int, variant_id: int, day: str, email: str = ""
                     "slot_start": "10:00",
                     "notes": "",
                     "privacy_accepted": True,
-                    "fingerprint": uuid.uuid4().hex,
                     "items": [{"variant_id": variant_id, "quantity": 1}],
                 })
                 return "ok"

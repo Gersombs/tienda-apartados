@@ -158,7 +158,6 @@ async def login(
             token_hash=keyed_token_hash(session_token),
             csrf_hash=keyed_token_hash(csrf_token),
             expires_at=now + timedelta(minutes=settings.session_lifetime_minutes),
-            user_agent_hash=hashlib.sha256(request.headers.get("user-agent", "").encode("utf-8")).hexdigest(),
         )
     )
     admin.last_login_at = now
