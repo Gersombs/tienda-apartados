@@ -1437,6 +1437,14 @@ async def read_settings(
     }
 
 
+def social_url(value: Optional[str], profile_base: str) -> str:
+    """"@usuario" o "instagram.com/usuario" -> enlace completo; sin https:// el botón abría una página de la tienda."""
+    clean = sanitize_text(value, 300)
+    if clean.startswith("@"):
+        return f"{profile_base}{clean[1:]}"
+    return mailer.normalize_host(clean)
+
+
 @router.put("/settings/store")
 async def update_store_settings(
     data: StoreSettingsPayload,
@@ -1454,9 +1462,9 @@ async def update_store_settings(
     settings.color_accent = data.color_accent if data.color_accent in PALETTES else ""
     settings.contact_email = sanitize_text(data.contact_email, 160)
     settings.contact_whatsapp = sanitize_text(data.contact_whatsapp, 20)
-    settings.instagram_url = sanitize_text(data.instagram_url, 300)
-    settings.tiktok_url = sanitize_text(data.tiktok_url, 300)
-    settings.facebook_url = sanitize_text(data.facebook_url, 300)
+    settings.instagram_url = social_url(data.instagram_url, "https://instagram.com/")
+    settings.tiktok_url = social_url(data.tiktok_url, "https://tiktok.com/@")
+    settings.facebook_url = social_url(data.facebook_url, "https://facebook.com/")
     settings.how_it_works = sanitize_multiline(data.how_it_works, 6000)
     settings.faq_content = sanitize_multiline(data.faq_content, 8000)
     settings.privacy_policy = sanitize_multiline(data.privacy_policy, 12000)

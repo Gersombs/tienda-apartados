@@ -313,11 +313,14 @@ def serialize_product(
     include_detail: bool = False,
 ) -> Dict[str, Any]:
     total_available = sum(available_units(v) for v in variants)
+    # La tarjeta muestra lo que de verdad cuesta: la variante más barata, con "Desde" si hay varios precios.
+    prices = sorted({money(money(product.price) + money(v.price_delta)) for v in variants}) or [money(product.price)]
     payload: Dict[str, Any] = {
         "name": product.name,
         "slug": product.slug,
         "short_description": product.short_description or "",
-        "price": money(product.price),
+        "price": prices[0],
+        "price_varies": len(prices) > 1,
         "category_name": category_name,
         "category_slug": category_slug,
         "is_featured": bool(product.is_featured),

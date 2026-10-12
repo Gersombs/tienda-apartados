@@ -39,6 +39,7 @@ export interface ProductCard {
   slug: string;
   short_description: string;
   price: number;
+  price_varies: boolean;
   category_name: string;
   category_slug: string;
   is_featured: boolean;
@@ -344,7 +345,8 @@ export const AVISO_SIN_PAGO =
   'No pagarás nada en este sitio. La transferencia se realiza al momento de recibir tus productos.';
 
 export function whatsappLink(numero: string, mensaje = ''): string {
-  const digits = (numero || '').replace(/\D/g, '');
+  // Últimos 10 dígitos: así "+52 55 1234 5678" no termina como 5252….
+  const digits = (numero || '').replace(/\D/g, '').slice(-10);
   const base = `https://wa.me/52${digits}`;
   return mensaje ? `${base}?text=${encodeURIComponent(mensaje)}` : base;
 }

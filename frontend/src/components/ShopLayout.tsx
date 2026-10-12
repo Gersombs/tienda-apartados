@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Search, ShoppingBag, Instagram, MessageCircle, X } from 'lucide-react';
+import { Home, Search, ShoppingBag, Facebook, Instagram, MessageCircle, X } from 'lucide-react';
 import {
   AVISO_SIN_PAGO,
   CartLine,
@@ -267,6 +267,16 @@ export default function ShopLayout({ children, settings, hideCartBar = false }: 
                   className="tap inline-flex items-center rounded-full border border-border bg-background px-4 text-sm font-medium"
                 >
                   TikTok
+                </a>
+              ) : null}
+              {settings?.facebook_url ? (
+                <a
+                  href={settings.facebook_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="tap inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-medium"
+                >
+                  <Facebook className="h-4 w-4" /> Facebook
                 </a>
               ) : null}
             </div>

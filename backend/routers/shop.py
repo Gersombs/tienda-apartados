@@ -152,11 +152,6 @@ async def list_products(
                 or needle in (p.full_description or "").lower()
             ]
 
-        if min_price and min_price > 0:
-            products = [p for p in products if float(p.price or 0) >= min_price]
-        if max_price and max_price > 0:
-            products = [p for p in products if float(p.price or 0) <= max_price]
-
         ids = [p.id for p in products]
         images = await load_images_for_products(db, ids)
         variants = await load_variants_for_products(db, ids)
@@ -171,6 +166,12 @@ async def list_products(
             )
             for p in products
         ]
+
+        # Mismo precio que muestra la tarjeta (la variante más barata).
+        if min_price and min_price > 0:
+            payload = [item for item in payload if item["price"] >= min_price]
+        if max_price and max_price > 0:
+            payload = [item for item in payload if item["price"] <= max_price]
 
         if availability == "disponibles":
             payload = [item for item in payload if item["available_units"] > 0]

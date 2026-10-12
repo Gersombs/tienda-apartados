@@ -100,6 +100,7 @@ class ProductSummaryPublic(PublicOutput):
     slug: str
     short_description: str
     price: float
+    price_varies: bool
     category_name: str
     category_slug: str
     is_featured: bool

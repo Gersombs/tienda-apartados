@@ -626,6 +626,33 @@ def test_changing_product_price_keeps_variant_own_prices(client):
     assert client.delete(f"/api/v1/crm/products/{product_id}", headers=headers).status_code == 200
 
 
+def test_social_links_always_leave_the_store():
+    assert crm_router.social_url("@nathaly.makeup", "https://instagram.com/") == "https://instagram.com/nathaly.makeup"
+    assert crm_router.social_url("@nathaly", "https://tiktok.com/@") == "https://tiktok.com/@nathaly"
+    assert crm_router.social_url("instagram.com/nathaly", "https://instagram.com/") == "https://instagram.com/nathaly"
+    assert crm_router.social_url("https://facebook.com/nathaly", "https://facebook.com/") == "https://facebook.com/nathaly"
+    assert crm_router.social_url("javascript:alert(1)", "https://instagram.com/").startswith("https://")
+    assert crm_router.social_url("  ", "https://instagram.com/") == ""
+
+
+def test_catalog_card_shows_the_cheapest_variant_price(client):
+    csrf = login(client)
+    headers = {"X-CSRF-Token": csrf}
+    product = {"name": "Perfume prueba desde", "slug": "perfume-prueba-desde", "price": 200}
+    product_id = client.post("/api/v1/crm/products", json=product, headers=headers).json()["id"]
+    for value, delta in (("50 ml", 50), ("100 ml", 200)):
+        client.post(
+            "/api/v1/crm/variants",
+            json={"product_id": product_id, "option_name": "Tamaño", "option_value": value, "stock": 1, "price_delta": delta},
+            headers=headers,
+        )
+    items = client.get("/api/v1/shop/products", params={"search": "perfume prueba desde"}).json()["items"]
+    assert [(i["price"], i["price_varies"]) for i in items] == [(250, True)]
+    # El filtro por precio usa el mismo precio que se ve en la tarjeta.
+    assert client.get("/api/v1/shop/products", params={"search": "perfume prueba desde", "max_price": 220}).json()["items"] == []
+    assert client.delete(f"/api/v1/crm/products/{product_id}", headers=headers).status_code == 200
+
+
 def test_emails_write_the_delivery_date_in_spanish():
     assert mailer._fecha("2026-10-14") == "miércoles 14 de octubre"
     assert mailer._fecha("2027-01-03") == "domingo 3 de enero"

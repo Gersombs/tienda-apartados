@@ -45,7 +45,10 @@ export default function ProductCardItem({ product }: { product: ProductCard }) {
         <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
           {product.short_description}
         </p>
-        <p className="precio mt-auto pt-2 text-base font-bold">{pesos(product.price)}</p>
+        <p className="precio mt-auto pt-2 text-base font-bold">
+          {product.price_varies ? 'Desde ' : ''}
+          {pesos(product.price)}
+        </p>
       </div>
     </Link>
   );
