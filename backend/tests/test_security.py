@@ -409,3 +409,14 @@ def test_public_reservations_are_rate_limited_per_ip(client):
     assert blocked.status_code == 429
     with db_connection() as db:
         assert db.execute("SELECT COUNT(*) FROM reservations").fetchone()[0] == count
+
+
+def test_delivery_date_must_be_written_as_year_month_day(client):
+    from datetime import date
+
+    payload = reservation_payload(client)
+    year, week, weekday = date.fromisoformat(payload["delivery_date"]).isocalendar()
+    payload["delivery_date"] = f"{year}-W{week:02d}-{weekday}"  # misma fecha, otro formato ISO
+    response = client.post("/api/v1/shop/reservations", json=payload)
+    assert response.status_code == 400
+    assert "fecha" in response.json()["detail"]

@@ -1012,7 +1012,10 @@ async def delete_product(
         raise HTTPException(status_code=404, detail="Producto no encontrado")
 
     variants_result = await db.execute(
-        select(Product_variants).where(Product_variants.product_id == product_id)
+        select(Product_variants)
+        .where(Product_variants.product_id == product_id)
+        .order_by(Product_variants.id)
+        .with_for_update()
     )
     variants = list(variants_result.scalars().all())
     if any(int(v.reserved_stock or 0) > 0 for v in variants):
@@ -1108,7 +1111,7 @@ async def update_variant(
     db: AsyncSession = Depends(get_db),
 ) -> Dict[str, Any]:
     variant = (
-        await db.execute(select(Product_variants).where(Product_variants.id == variant_id))
+        await db.execute(select(Product_variants).where(Product_variants.id == variant_id).with_for_update())
     ).scalars().first()
     if variant is None:
         raise HTTPException(status_code=404, detail="Variante no encontrada")
@@ -1149,7 +1152,7 @@ async def delete_variant(
     db: AsyncSession = Depends(get_db),
 ) -> Dict[str, Any]:
     variant = (
-        await db.execute(select(Product_variants).where(Product_variants.id == variant_id))
+        await db.execute(select(Product_variants).where(Product_variants.id == variant_id).with_for_update())
     ).scalars().first()
     if variant is None:
         raise HTTPException(status_code=404, detail="Variante no encontrada")
@@ -1170,7 +1173,7 @@ async def adjust_stock(
 ) -> Dict[str, Any]:
     """Ajuste manual de inventario con historial."""
     variant = (
-        await db.execute(select(Product_variants).where(Product_variants.id == data.variant_id))
+        await db.execute(select(Product_variants).where(Product_variants.id == data.variant_id).with_for_update())
     ).scalars().first()
     if variant is None:
         raise HTTPException(status_code=404, detail="Variante no encontrada")

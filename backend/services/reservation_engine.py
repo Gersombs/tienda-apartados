@@ -772,6 +772,9 @@ async def _validate_slot(
         day = date.fromisoformat(delivery_date)
     except (TypeError, ValueError):
         raise ReservationError("Selecciona una fecha de entrega válida.")
+    # fromisoformat también acepta "2026-W42-2"; el cupo y los filtros comparan el texto AAAA-MM-DD.
+    if day.isoformat() != delivery_date:
+        raise ReservationError("Selecciona una fecha de entrega válida.")
 
     start_day = today_mx()
     if day < start_day or day > start_day + timedelta(days=max(1, window_days) - 1):

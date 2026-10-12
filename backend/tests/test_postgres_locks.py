@@ -119,3 +119,45 @@ def test_postgres_slot_capacity_holds_under_concurrency(session_maker):
     results, reserved = asyncio.run(scenario())
     assert results.count("ok") == 1, results
     assert reserved == 1
+
+
+def test_postgres_admin_stock_adjust_waits_for_a_reservation_in_progress(session_maker):
+    from types import SimpleNamespace
+
+    from fastapi import HTTPException
+
+    from routers.crm import StockAdjustRequest, adjust_stock
+
+    async def scenario():
+        _point_id, variant_id, _day = await _setup(session_maker, stock=5, capacity=0)
+        async with session_maker() as reserving, session_maker() as admin_db:
+            # Un apartado en curso tiene la variante bloqueada y aparta las 5 piezas.
+            variant = (
+                await reserving.execute(
+                    select(Product_variants).where(Product_variants.id == variant_id).with_for_update()
+                )
+            ).scalar_one()
+            variant.reserved_stock = 5
+            await reserving.flush()
+
+            adjust = asyncio.create_task(
+                adjust_stock(
+                    StockAdjustRequest(variant_id=variant_id, new_stock=2),
+                    admin=SimpleNamespace(auth_user_id="admin-prueba"),
+                    db=admin_db,
+                )
+            )
+            await asyncio.sleep(0.5)
+            waited = not adjust.done()
+            await reserving.commit()
+            try:
+                await adjust
+                outcome = "guardado"
+            except HTTPException as exc:
+                outcome = exc.status_code
+        return waited, outcome, await _reserved(session_maker, variant_id)
+
+    waited, outcome, reserved = asyncio.run(scenario())
+    assert waited
+    assert outcome == 400
+    assert reserved == 5
