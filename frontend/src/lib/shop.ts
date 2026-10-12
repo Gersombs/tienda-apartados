@@ -12,8 +12,6 @@ export interface StoreSettings {
   tagline: string;
   logo_url: string;
   hero_image_url: string;
-  color_bg: string;
-  color_text: string;
   color_accent: string;
   contact_email: string;
   contact_whatsapp: string;

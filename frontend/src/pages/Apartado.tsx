@@ -28,12 +28,7 @@ import {
 
 interface Bootstrap {
   settings: StoreSettings;
-}
-
-interface OptionsResponse {
   delivery_points: DeliveryPoint[];
-  reservation_window_days: number;
-  grace_period_hours: number;
 }
 
 interface AvailabilityResponse {
@@ -117,7 +112,7 @@ export default function Apartado() {
   const { count, total } = cartTotals(lines);
 
   const [settings, setSettings] = useState<StoreSettings | null>(null);
-  const [options, setOptions] = useState<OptionsResponse | null>(null);
+  const [points, setPoints] = useState<DeliveryPoint[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [step, setStep] = useState<Step>('apartado');
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -137,18 +132,14 @@ export default function Apartado() {
     });
   }, [settings]);
 
-  useEffect(() => {
-    api<Bootstrap>('/api/v1/shop/bootstrap')
-      .then((result) => setSettings(result.settings))
-      .catch(() => undefined);
-  }, []);
-
+  // Una sola llamada: bootstrap ya trae los puntos con sus fechas y cupos.
   useEffect(() => {
     let cancelled = false;
-    api<OptionsResponse>('/api/v1/shop/delivery-options')
+    api<Bootstrap>('/api/v1/shop/bootstrap')
       .then((result) => {
         if (cancelled) return;
-        setOptions(result);
+        setSettings(result.settings);
+        setPoints(result.delivery_points);
         // Preselecciona el primer punto que sí tiene horarios.
         const first = result.delivery_points.find((p) => p.days.length > 0) || result.delivery_points[0];
         if (first) setPointId(first.id);
@@ -191,8 +182,8 @@ export default function Apartado() {
   }, []);
 
   const selectedPoint = useMemo(
-    () => options?.delivery_points.find((p) => p.id === pointId) || null,
-    [options, pointId],
+    () => points.find((p) => p.id === pointId) || null,
+    [points, pointId],
   );
 
   const availableDays: DeliveryDay[] = useMemo(() => selectedPoint?.days ?? [], [selectedPoint]);
@@ -533,13 +524,13 @@ export default function Apartado() {
                   <Skeleton className="h-16 rounded-xl" />
                   <Skeleton className="h-16 rounded-xl" />
                 </div>
-              ) : (options?.delivery_points.length || 0) === 0 ? (
+              ) : points.length === 0 ? (
                 <p className="mt-2 rounded-xl border border-border bg-background p-3 text-sm text-muted-foreground">
                   No hay puntos de entrega disponibles en este momento. Escríbenos por WhatsApp para coordinar.
                 </p>
               ) : (
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                  {options?.delivery_points.map((point) => {
+                  {points.map((point) => {
                     const active = point.id === pointId;
                     const sinHorarios = point.days.length === 0;
                     return (
@@ -578,7 +569,7 @@ export default function Apartado() {
                 <legend className="text-sm font-semibold">
                   Fecha
                   <span className="ml-1 text-xs font-normal text-muted-foreground">
-                    (próximos {options?.reservation_window_days || 7} días)
+                    (próximos {settings?.reservation_window_days || 7} días)
                   </span>
                 </legend>
                 <div className="chips mt-2 flex gap-2 overflow-x-auto pb-1">

@@ -9,7 +9,7 @@ from core.auth import private_token_hash
 from core.config import Settings
 from core.reservation_limits import MAX_RESERVATION_BODY_BYTES, MAX_RESERVATION_TOTAL_UNITS
 from main import PROTECTED_AUTH_ENDPOINTS, PUBLIC_ENDPOINTS, app, is_public_request
-from routers.auth import GENERIC_LOGIN_ERROR, login_limiter
+from routers.auth import GENERIC_LOGIN_ERROR, LoginRateLimiter, login_limiter
 from schemas.shop import ReservationPublicCreate
 
 from conftest import (
@@ -109,9 +109,8 @@ def test_public_catalog_has_only_allowlisted_fields(client):
 def test_expected_public_routes_remain_usable(client):
     bootstrap = client.get("/api/v1/shop/bootstrap")
     products = client.get("/api/v1/shop/products", params={"sort": "novedades"})
-    delivery = client.get("/api/v1/shop/delivery-options")
     content = client.get("/api/v1/shop/content")
-    assert all(response.status_code == 200 for response in (bootstrap, products, delivery, content))
+    assert all(response.status_code == 200 for response in (bootstrap, products, content))
     slug = products.json()["items"][0]["slug"]
     assert client.get(f"/api/v1/shop/products/{slug}").status_code == 200
 
@@ -372,6 +371,17 @@ def test_login_rate_limit(client):
     )
     assert limited.status_code == 429
     assert "Retry-After" in limited.headers
+
+
+def test_rate_limiter_forgets_ips_once_their_window_passes():
+    limiter = LoginRateLimiter(max_attempts=2, window_seconds=60)
+    limiter.check("visita")
+    assert limiter._attempts == {}
+    limiter.fail("apartado")
+    assert "apartado" in limiter._attempts
+    later = limiter._attempts["apartado"][0] + 61
+    limiter._trim("apartado", later)
+    assert limiter._attempts == {}
 
 
 def test_admin_cookie_and_csrf_are_required_for_mutation(client):

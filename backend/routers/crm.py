@@ -161,8 +161,6 @@ class StoreSettingsPayload(AdminInput):
     tagline: Optional[str] = ""
     logo_url: Optional[str] = ""
     hero_image_url: Optional[str] = ""
-    color_bg: Optional[str] = ""
-    color_text: Optional[str] = ""
     color_accent: Optional[str] = ""
     contact_email: Optional[str] = ""
     contact_whatsapp: Optional[str] = ""
@@ -1446,8 +1444,6 @@ async def update_store_settings(
     settings.tagline = sanitize_text(data.tagline, 160)
     settings.logo_url = sanitize_text(data.logo_url, 600)
     settings.hero_image_url = sanitize_text(data.hero_image_url, 600)
-    settings.color_bg = sanitize_text(data.color_bg, 20)
-    settings.color_text = sanitize_text(data.color_text, 20)
     settings.color_accent = data.color_accent if data.color_accent in PALETTES else ""
     settings.contact_email = sanitize_text(data.contact_email, 160)
     settings.contact_whatsapp = sanitize_text(data.contact_whatsapp, 20)

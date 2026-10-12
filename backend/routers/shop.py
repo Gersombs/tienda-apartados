@@ -24,7 +24,6 @@ from schemas.shop import (
     BootstrapPublicResponse,
     ContentPublicResponse,
     ConfirmationTokenRequest,
-    DeliveryOptionsPublicResponse,
     ProductDetailResponse,
     ProductsPublicResponse,
     PublicConfirmationResponse,
@@ -262,23 +261,6 @@ async def product_detail(
     except Exception as exc:  # noqa: BLE001
         logger.error("Error en ficha de producto %s: %s", slug, exc, exc_info=True)
         raise HTTPException(status_code=500, detail="No pudimos cargar el producto.")
-
-
-@router.get("/delivery-options", response_model=DeliveryOptionsPublicResponse)
-async def delivery_options(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
-    """Puntos de entrega con fechas y horarios realmente disponibles."""
-    try:
-        settings = await get_store_settings(db)
-        config = store_settings_public(settings)
-        points = await load_delivery_options(db, config["reservation_window_days"])
-        return {
-            "delivery_points": points,
-            "reservation_window_days": config["reservation_window_days"],
-            "grace_period_hours": config["grace_period_hours"],
-        }
-    except Exception as exc:  # noqa: BLE001
-        logger.error("Error cargando puntos de entrega: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail="No pudimos cargar los puntos de entrega.")
 
 
 @router.post("/availability", response_model=AvailabilityPublicResponse, response_model_exclude_none=True)

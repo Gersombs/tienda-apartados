@@ -46,7 +46,6 @@ PUBLIC_ENDPOINTS = frozenset(
         ("GET", "/api/v1/shop/bootstrap"),
         ("GET", "/api/v1/shop/products"),
         ("GET", "/api/v1/shop/products/{slug}"),
-        ("GET", "/api/v1/shop/delivery-options"),
         ("POST", "/api/v1/shop/availability"),
         ("POST", "/api/v1/shop/reservations"),
         ("POST", "/api/v1/shop/confirmation"),

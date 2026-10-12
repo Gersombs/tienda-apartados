@@ -160,8 +160,6 @@ class StoreSettingsPublic(PublicOutput):
     tagline: str
     logo_url: str
     hero_image_url: str
-    color_bg: str
-    color_text: str
     color_accent: str
     contact_email: str
     contact_whatsapp: str
@@ -182,12 +180,6 @@ class BootstrapPublicResponse(PublicOutput):
     categories: list[CategoryPublic]
     featured: list[ProductSummaryPublic]
     delivery_points: list[DeliveryPointPublic]
-
-
-class DeliveryOptionsPublicResponse(PublicOutput):
-    delivery_points: list[DeliveryPointPublic]
-    reservation_window_days: int
-    grace_period_hours: int
 
 
 class AvailabilityLinePublic(PublicOutput):

@@ -13,7 +13,6 @@ La misma allowlist se aplica en tiempo de ejecución: fuera de estas rutas públ
 | `GET /api/v1/shop/bootstrap` | Público, sólo lectura | Marca pública, categorías, destacados y puntos públicos |
 | `GET /api/v1/shop/products` | Público, sólo lectura | Productos activos y campos públicos |
 | `GET /api/v1/shop/products/{slug}` | Público, sólo lectura | Detalle público por slug |
-| `GET /api/v1/shop/delivery-options` | Público, sólo lectura | Puntos, fechas, horarios y capacidad disponible |
 | `POST /api/v1/shop/availability` | Público, sólo lectura lógica | Recalcula precio y disponibilidad; no aparta |
 | `POST /api/v1/shop/reservations` | Público, creación | Crea una solicitud con schema estricto, body máximo de 32 KiB y cálculo servidor; requiere rate limit compartido en WAF/proxy antes de producción |
 | `POST /api/v1/shop/confirmation` | Token privado en cuerpo JSON | Confirmación mínima; los datos bancarios sólo aparecen en estados activos |

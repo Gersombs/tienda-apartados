@@ -48,10 +48,13 @@ class LoginRateLimiter:
         return self._window or settings.login_window_seconds
 
     def _trim(self, key: str, now: float) -> deque[float]:
-        attempts = self._attempts[key]
+        # .get y no [key]: consultar una IP sin intentos no debe dejarle una entrada vacía para siempre.
+        attempts = self._attempts.get(key, deque())
         cutoff = now - self.window
         while attempts and attempts[0] <= cutoff:
             attempts.popleft()
+        if not attempts:
+            self._attempts.pop(key, None)
         return attempts
 
     def check(self, key: str) -> None:
@@ -65,7 +68,8 @@ class LoginRateLimiter:
 
     def fail(self, key: str) -> None:
         now = time.monotonic()
-        self._trim(key, now).append(now)
+        self._trim(key, now)
+        self._attempts[key].append(now)
 
     def clear(self, key: str) -> None:
         self._attempts.pop(key, None)
