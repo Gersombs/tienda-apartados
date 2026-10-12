@@ -231,6 +231,13 @@ const TEMPLATE_LABELS: Record<string, string> = {
   enlace_privado: 'Enlace privado nuevo',
 };
 
+// Botones para mandar un aviso a mano, con lo que hace cada uno.
+const MANUAL_EMAIL_LABELS: Record<string, string> = {
+  cancelada: 'A la clienta: su apartado se canceló',
+  vencida: 'A la clienta: su apartado venció',
+  alerta_negocio: 'A mí: copia del aviso de este apartado',
+};
+
 const LINK_EMAIL_TEMPLATES = new Set(['recibida', 'confirmada', 'lista', 'enlace_privado']);
 const ACTIVE_RESERVATION_STATUSES = new Set(['recibida', 'confirmada', 'preparando', 'lista']);
 
@@ -893,9 +900,9 @@ function ReservationsTab({ toast }: { toast: ToastFn }) {
   const generateAndSendPrivateLink = async () => {
     if (!selected) return;
     const ok = await confirmAction({
-      title: '¿Generar un enlace nuevo?',
-      description: 'El enlace anterior dejará de funcionar de inmediato.',
-      confirmLabel: 'Generar enlace',
+      title: '¿Enviar un enlace nuevo a la clienta?',
+      description: 'Le llegará por correo. El enlace que tenía antes dejará de funcionar.',
+      confirmLabel: 'Enviar enlace',
     });
     if (!ok) {
       return;
@@ -915,7 +922,7 @@ function ReservationsTab({ toast }: { toast: ToastFn }) {
       setLinkDeliveryStatus(result.message);
       setDetail((prev) => (prev ? { ...prev, notifications: result.notifications } : prev));
       toast({
-        title: result.email_sent ? 'Enlace nuevo enviado' : 'Copia el enlace nuevo',
+        title: result.email_sent ? 'Enlace enviado a la clienta' : 'Copia el enlace nuevo',
         description: result.message,
         variant: result.email_sent ? undefined : 'destructive',
       });
@@ -939,9 +946,9 @@ function ReservationsTab({ toast }: { toast: ToastFn }) {
   const revokePrivateLink = async () => {
     if (!selected) return;
     const ok = await confirmAction({
-      title: '¿Revocar el enlace?',
-      description: 'La clienta ya no podrá volver a abrirlo.',
-      confirmLabel: 'Revocar',
+      title: '¿Desactivar el enlace de la clienta?',
+      description: 'Ya no podrá ver su apartado con ese enlace. Después puedes enviarle uno nuevo.',
+      confirmLabel: 'Desactivar',
       destructive: true,
     });
     if (!ok) {
@@ -951,8 +958,8 @@ function ReservationsTab({ toast }: { toast: ToastFn }) {
     try {
       await api(`/api/v1/crm/reservations/${selected}/revoke-confirmation-token`, 'POST');
       setPrivateLink('');
-      setLinkDeliveryStatus('El enlace privado quedó revocado.');
-      toast({ title: 'Enlace privado revocado' });
+      setLinkDeliveryStatus('El enlace de la clienta quedó desactivado.');
+      toast({ title: 'Enlace desactivado' });
     } catch (e) {
       toast({ title: apiError(e), variant: 'destructive' });
     } finally {
@@ -1256,11 +1263,11 @@ function ReservationsTab({ toast }: { toast: ToastFn }) {
 
             <section className="rounded-2xl border border-border bg-card p-4">
               <h3 className="flex items-center gap-2 text-sm font-semibold">
-                <Link2 className="h-4 w-4 text-primary" /> Enlace privado
+                <Link2 className="h-4 w-4 text-primary" /> Enlace de la clienta
               </h3>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                Generar un enlace nuevo invalida el anterior. El token sólo permanecerá temporalmente
-                en esta pantalla y no se guardará en el navegador.
+                Con este enlace la clienta ve su apartado y tus datos para la transferencia. Le llegó por
+                correo; si lo perdió o no le llegó, envíale uno nuevo y el anterior dejará de funcionar.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button
@@ -1271,7 +1278,7 @@ function ReservationsTab({ toast }: { toast: ToastFn }) {
                   onClick={generateAndSendPrivateLink}
                   className="rounded-full"
                 >
-                  <Link2 className="mr-2 h-4 w-4" /> Generar y enviar nuevo enlace
+                  <Link2 className="mr-2 h-4 w-4" /> Enviar enlace nuevo a la clienta
                 </Button>
                 <Button
                   size="sm"
@@ -1280,13 +1287,14 @@ function ReservationsTab({ toast }: { toast: ToastFn }) {
                   onClick={revokePrivateLink}
                   className="rounded-full !bg-transparent"
                 >
-                  <Unlink className="mr-2 h-4 w-4" /> Revocar enlace
+                  <Unlink className="mr-2 h-4 w-4" /> Desactivar enlace
                 </Button>
               </div>
               {privateLink ? (
                 <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
                   <Label htmlFor="crm-enlace-privado" className="text-xs font-semibold text-amber-950">
-                    Copia este enlace antes de cerrar o cambiar de reservación
+                    Si el correo no le llega, copia este enlace y mándaselo por WhatsApp. Sólo se muestra
+                    ahora: cópialo antes de cerrar o cambiar de apartado.
                   </Label>
                   <div className="mt-2 flex gap-2">
                     <Input
@@ -1339,16 +1347,15 @@ function ReservationsTab({ toast }: { toast: ToastFn }) {
                         }
                         className="mt-1 h-8 px-0 text-xs text-primary"
                       >
-                        {LINK_EMAIL_TEMPLATES.has(n.template) ? 'Generar enlace nuevo' : 'Reenviar'}
+                        {LINK_EMAIL_TEMPLATES.has(n.template) ? 'Enviar enlace nuevo' : 'Reenviar'}
                       </Button>
                     </li>
                   ))}
                 </ul>
               )}
-              <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
-                {Object.keys(TEMPLATE_LABELS)
-                  .filter((template) => !LINK_EMAIL_TEMPLATES.has(template))
-                  .map((template) => (
+              <p className="mt-3 border-t border-border pt-3 text-xs font-semibold">Enviar un aviso por correo</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {Object.keys(MANUAL_EMAIL_LABELS).map((template) => (
                   <Button
                     key={template}
                     size="sm"
@@ -1357,7 +1364,7 @@ function ReservationsTab({ toast }: { toast: ToastFn }) {
                     onClick={() => resend(template)}
                     className="rounded-full !bg-transparent text-xs hover:!bg-transparent"
                   >
-                    {TEMPLATE_LABELS[template]}
+                    {MANUAL_EMAIL_LABELS[template]}
                   </Button>
                   ))}
               </div>

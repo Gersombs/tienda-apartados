@@ -609,7 +609,7 @@ async def rotate_confirmation_token(
     if reservation.status not in ACTIVE_STATUSES:
         raise HTTPException(
             status_code=409,
-            detail="Los apartados en estado terminal no pueden generar enlaces privados nuevos.",
+            detail="Este apartado ya terminó (entregado, cancelado o vencido); no se puede enviar un enlace nuevo.",
         )
     raw_token = new_secret_token()
     reservation.private_token_hash = private_token_hash(raw_token)
@@ -654,9 +654,9 @@ async def rotate_confirmation_token(
         "email_status": email_results,
         "notifications": await mailer.notification_log(db, reservation_id),
         "message": (
-            "El enlace nuevo se envió y el anterior quedó invalidado."
+            "Le enviamos a la clienta un enlace nuevo por correo. El que tenía antes ya no funciona."
             if email_sent
-            else "El correo no se confirmó. Copia el enlace nuevo antes de cerrar este panel."
+            else "No se pudo confirmar el correo. Copia el enlace nuevo y mándaselo por WhatsApp."
         ),
     }
 

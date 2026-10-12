@@ -159,4 +159,18 @@
   body {
     background: #fff;
   }
+
+  /* Conserva los colores de estado y total; las tarjetas no se parten entre hojas. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  section {
+    break-inside: avoid;
+  }
+
+  main {
+    padding-bottom: 0 !important;
+  }
 }

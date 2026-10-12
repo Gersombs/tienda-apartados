@@ -164,7 +164,7 @@ export default function Confirmacion() {
   return (
     <ShopLayout settings={null} hideCartBar>
       {esNueva ? (
-        <div className="flex items-start gap-3 rounded-2xl border border-primary/30 bg-accent p-4">
+        <div className="no-imprimir flex items-start gap-3 rounded-2xl border border-primary/30 bg-accent p-4">
           <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
           <div>
             <p className="text-sm font-semibold text-accent-foreground">
@@ -256,7 +256,7 @@ export default function Confirmacion() {
           <h2 className="flex items-center gap-2 text-base">
             <CalendarDays className="h-4 w-4 text-primary" /> Fecha y horario
           </h2>
-          <p className="mt-2 text-sm font-medium capitalize">{fechaLarga(reservation.delivery_date)}</p>
+          <p className="mt-2 text-sm font-medium first-letter:uppercase">{fechaLarga(reservation.delivery_date)}</p>
           <p className="precio mt-1 text-sm text-muted-foreground">
             {reservation.slot_start} a {reservation.slot_end}
           </p>

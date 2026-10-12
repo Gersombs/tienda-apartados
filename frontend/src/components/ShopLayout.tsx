@@ -152,8 +152,8 @@ export default function ShopLayout({ children, settings, hideCartBar = false }: 
   const showBar = !hideCartBar && count > 0;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm">
+    <div className="flex min-h-screen flex-col bg-background print:bg-white">
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm print:static print:bg-white">
         <div className="mx-auto flex w-full max-w-screen-xl items-center gap-3 px-4 py-3">
           <Link to="/" className="flex min-w-0 items-center gap-2">
             {settings?.logo_url ? (
@@ -166,7 +166,7 @@ export default function ShopLayout({ children, settings, hideCartBar = false }: 
             <span className="display truncate text-base font-bold tracking-tight">{shopName}</span>
           </Link>
 
-          <nav className="ml-auto hidden items-center gap-1 md:flex">
+          <nav className="no-imprimir ml-auto hidden items-center gap-1 md:flex">
             {nav.map((item) => (
               <Link
                 key={item.to}
@@ -192,7 +192,7 @@ export default function ShopLayout({ children, settings, hideCartBar = false }: 
             type="button"
             onClick={() => setPanelOpen(true)}
             aria-label={`Abrir mi apartado, ${count} artículos`}
-            className="tap relative ml-auto flex items-center justify-center rounded-full border border-border text-foreground hover:bg-secondary md:ml-0"
+            className="no-imprimir tap relative ml-auto flex items-center justify-center rounded-full border border-border text-foreground hover:bg-secondary md:ml-0"
           >
             <ShoppingBag className="h-5 w-5" />
             {count > 0 && (
@@ -206,7 +206,7 @@ export default function ShopLayout({ children, settings, hideCartBar = false }: 
 
       <main className="mx-auto w-full max-w-screen-xl flex-1 px-4 pb-32 pt-4 md:pb-16">{children}</main>
 
-      <footer className="border-t border-border bg-secondary/60 px-4 pb-24 pt-8 md:pb-8">
+      <footer className="no-imprimir border-t border-border bg-secondary/60 px-4 pb-24 pt-8 md:pb-8">
         <div className="mx-auto w-full max-w-screen-xl">
           <p className="display text-lg font-semibold">{shopName}</p>
           {settings?.tagline ? (
@@ -277,7 +277,7 @@ export default function ShopLayout({ children, settings, hideCartBar = false }: 
         <button
           type="button"
           onClick={() => setPanelOpen(true)}
-          className="fixed bottom-[76px] left-1/2 z-30 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-center gap-3 rounded-full bg-foreground px-5 py-3 text-background shadow-lg md:bottom-6"
+          className="no-imprimir fixed bottom-[76px] left-1/2 z-30 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-center gap-3 rounded-full bg-foreground px-5 py-3 text-background shadow-lg md:bottom-6"
         >
           <ShoppingBag className="h-5 w-5 flex-shrink-0" />
           <span className="precio text-sm font-semibold">
@@ -289,7 +289,7 @@ export default function ShopLayout({ children, settings, hideCartBar = false }: 
 
       <nav
         aria-label="Navegación principal"
-        className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-background md:hidden"
+        className="no-imprimir fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-background md:hidden"
       >
         <div className="grid grid-cols-3">
           {nav.map((item) => {

@@ -83,7 +83,7 @@ test('admin uses local cookie session, handles expiry and has no claim flow', ()
   assert.match(admin, /\/api\/v1\/auth\/login/);
   assert.match(admin, /type="password"/);
   assert.doesNotMatch(admin, /claim-admin|client\.auth|localStorage/);
-  assert.match(admin, /Generar y enviar nuevo enlace/);
+  assert.match(admin, /Enviar enlace nuevo a la clienta/);
   assert.match(admin, /rotate-confirmation-token/);
   assert.match(admin, /revoke-confirmation-token/);
   assert.match(admin, /confirmAction\(/);
