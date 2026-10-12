@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
   Building2,
-  CalendarDays,
-  CheckCircle2,
+  CalendarPlus,
+  Check,
+  Clock,
   Copy,
   MapPin,
   MessageCircle,
+  Navigation,
   Printer,
 } from 'lucide-react';
 import ShopLayout from '@/components/ShopLayout';
@@ -39,22 +41,34 @@ interface ConfirmationResponse {
   bank_details: BankDetails;
 }
 
-const STATUS_TONE: Record<string, string> = {
-  recibida: 'bg-secondary text-secondary-foreground',
-  confirmada: 'bg-accent text-accent-foreground',
-  preparando: 'bg-accent text-accent-foreground',
-  lista: 'bg-primary text-primary-foreground',
-  entregada: 'bg-foreground text-background',
-  cancelada: 'bg-destructive/15 text-destructive',
-  no_show: 'bg-destructive/15 text-destructive',
-  vencida: 'bg-destructive/15 text-destructive',
-};
-
 const CERRADAS = ['cancelada', 'no_show', 'vencida', 'entregada'];
+
+// Avance que ve la clienta; "confirmada" solo existe en apartados viejos y cuenta como recibida.
+const SEGUIMIENTO = [
+  { estados: ['recibida', 'confirmada'], label: 'Recibida' },
+  { estados: ['preparando'], label: 'Preparando' },
+  { estados: ['lista'], label: 'Lista' },
+  { estados: ['entregada'], label: 'Entregada' },
+];
 
 function readPrivateFragment() {
   const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
   return { token: params.get('t') || '', esNueva: params.get('nueva') === '1' };
+}
+
+/** Evento de Google Calendar con la cita de entrega (sin el enlace privado, que es secreto). */
+function calendarioUrl(reservation: Reservation, shopName: string) {
+  const dia = reservation.delivery_date.replace(/-/g, '');
+  const hora = (value: string) => `${value.replace(':', '').slice(0, 4)}00`;
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: `Recoger mi apartado ${reservation.folio} — ${shopName}`,
+    dates: `${dia}T${hora(reservation.slot_start)}/${dia}T${hora(reservation.slot_end)}`,
+    ctz: 'America/Mexico_City',
+    location: [reservation.delivery_point_name, reservation.delivery_point_reference].filter(Boolean).join(' — '),
+    details: `Total a pagar al recibir: ${pesos(reservation.total_amount)}. ${AVISO_SIN_PAGO}`,
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
 export default function Confirmacion() {
@@ -99,6 +113,7 @@ export default function Confirmacion() {
 
   const reservation = data?.reservation || null;
   const cerrada = reservation ? CERRADAS.includes(reservation.status) : false;
+  const avance = reservation ? SEGUIMIENTO.findIndex((paso) => paso.estados.includes(reservation.status)) : -1;
 
   const resumenTexto = useMemo(() => {
     if (!reservation) return '';
@@ -191,193 +206,214 @@ export default function Confirmacion() {
     );
   }
 
+  const exito = esNueva && !cerrada;
+  const FolioTag = exito ? 'h2' : 'h1';
+  const outline = 'tap rounded-full !bg-transparent hover:!bg-transparent';
+
   return (
     <ShopLayout settings={null} hideCartBar>
       <ConfirmDialogHost />
-      {esNueva ? (
-        <div className="no-imprimir flex items-start gap-3 rounded-2xl border border-primary/30 bg-accent p-4">
-          <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
-          <div>
-            <p className="text-sm font-semibold text-accent-foreground">
-              Recibimos tu solicitud de apartado
-            </p>
-            <p className="mt-1 text-sm leading-relaxed text-accent-foreground/90">
-              Te enviamos este resumen por correo. Guarda este enlace privado para consultar tu apartado
-              cuando quieras.
-            </p>
-          </div>
+      {exito ? (
+        <div className="no-imprimir mb-6 rounded-3xl bg-accent/60 px-5 py-7 text-center sm:py-9">
+          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground animate-in zoom-in-50 duration-500">
+            <Check className="h-7 w-7" strokeWidth={3} />
+          </span>
+          <h1 className="mt-4 text-2xl sm:text-3xl">¡Listo! Apartamos tus productos</h1>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+            Te enviamos este resumen a tu correo con tu enlace privado. Si no lo ves, revisa la carpeta de spam.
+          </p>
         </div>
       ) : null}
 
-      <header className="mt-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-          Solicitud de apartado
-        </p>
-        <h1 className="precio mt-1 text-[1.75rem] sm:text-3xl">{reservation.folio}</h1>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span
-            className={`rounded-full px-3 py-1 text-sm font-semibold ${
-              STATUS_TONE[reservation.status] || STATUS_TONE.recibida
-            }`}
-          >
-            {reservation.status_label}
-          </span>
-          <span className="text-sm text-muted-foreground">
-            {reservation.item_count === 1 ? '1 artículo' : `${reservation.item_count} artículos`}
-          </span>
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Folio de tu apartado</p>
+          <FolioTag className="precio mt-1 text-[1.75rem] font-bold sm:text-3xl">{reservation.folio}</FolioTag>
         </div>
-        {cerrada && reservation.cancel_reason ? (
-          <p className="mt-3 flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm leading-relaxed text-muted-foreground">
-            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-destructive" />
-            {reservation.cancel_reason}
-          </p>
-        ) : null}
+        <span className="text-sm text-muted-foreground">
+          {reservation.item_count === 1 ? '1 artículo' : `${reservation.item_count} artículos`}
+        </span>
       </header>
 
-      <section className="mt-5 rounded-2xl border border-border bg-card p-4">
-        <h2 className="text-base">Productos apartados</h2>
-        <ul className="mt-3 divide-y divide-border">
-          {reservation.items.map((item) => (
-            <li
-              key={`${item.product_name}-${item.variant_label}-${item.quantity}`}
-              className="flex items-start gap-3 py-3"
-            >
-              {item.image_url ? (
-                <img
-                  src={item.image_url}
-                  alt={item.product_name}
-                  loading="lazy"
-                  className="h-14 w-14 flex-shrink-0 rounded-lg object-cover"
-                />
-              ) : null}
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold">{item.product_name}</p>
-                {item.variant_label ? (
-                  <p className="text-xs text-muted-foreground">{item.variant_label}</p>
-                ) : null}
-                <p className="precio mt-1 text-xs text-muted-foreground">
-                  {item.quantity} × {pesos(item.unit_price)}
-                </p>
-              </div>
-              <span className="precio text-sm font-semibold">{pesos(item.line_total)}</span>
+      {avance >= 0 ? (
+        <ol aria-label="Estado de tu apartado" className="mt-4 grid grid-cols-4 gap-1.5">
+          {SEGUIMIENTO.map((paso, index) => (
+            <li key={paso.label} aria-current={index === avance ? 'step' : undefined}>
+              <span className={`block h-1.5 rounded-full ${index <= avance ? 'bg-primary' : 'bg-secondary'}`} />
+              <span
+                className={`mt-1.5 block text-[11px] sm:text-xs ${
+                  index === avance ? 'font-semibold text-foreground' : 'text-muted-foreground'
+                }`}
+              >
+                {paso.label}
+              </span>
             </li>
           ))}
-        </ul>
-        <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
-          <span className="text-sm font-semibold">Total a pagar al entregar</span>
-          <span className="precio text-2xl font-bold text-primary">
-            {pesos(reservation.total_amount)}
+        </ol>
+      ) : (
+        <p className="mt-4 flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm leading-relaxed">
+          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-destructive" />
+          <span>
+            <strong>{reservation.status_label}.</strong>{' '}
+            <span className="text-muted-foreground">{reservation.cancel_reason}</span>
           </span>
-        </div>
-      </section>
+        </p>
+      )}
 
-      <section className="mt-4 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-card p-4">
-          <h2 className="flex items-center gap-2 text-base">
-            <MapPin className="h-4 w-4 text-primary" /> Punto de entrega
-          </h2>
-          <p className="mt-2 text-sm font-medium">{reservation.delivery_point_name}</p>
-          {reservation.delivery_point_reference ? (
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              {reservation.delivery_point_reference}
-            </p>
-          ) : null}
-        </div>
-        <div className="rounded-2xl border border-border bg-card p-4">
-          <h2 className="flex items-center gap-2 text-base">
-            <CalendarDays className="h-4 w-4 text-primary" /> Fecha y horario
-          </h2>
-          <p className="mt-2 text-sm font-medium first-letter:uppercase">{fechaLarga(reservation.delivery_date)}</p>
-          <p className="precio mt-1 text-sm text-muted-foreground">
-            {reservation.slot_start} a {reservation.slot_end}
-          </p>
-        </div>
-      </section>
-
-      {/* Datos bancarios: entregados solo por API con token válido */}
-      {!cerrada && (data.bank_details.clabe || data.bank_details.account_number) ? (
-        <section className="mt-4 rounded-2xl border border-border bg-card p-4">
-          <h2 className="flex items-center gap-2 text-base">
-            <Building2 className="h-4 w-4 text-primary" /> Datos para tu transferencia
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Usa estos datos <strong className="text-foreground">solo al momento de la entrega</strong>,
-            frente a la persona que te entrega tus productos.
-          </p>
-          <dl className="mt-3 space-y-2 text-sm">
-            {data.bank_details.bank_name ? (
-              <div className="flex flex-wrap justify-between gap-2 border-b border-border pb-2">
-                <dt className="text-muted-foreground">Banco</dt>
-                <dd className="font-medium">{data.bank_details.bank_name}</dd>
-              </div>
-            ) : null}
-            {data.bank_details.account_holder ? (
-              <div className="flex flex-wrap justify-between gap-2 border-b border-border pb-2">
-                <dt className="text-muted-foreground">Titular</dt>
-                <dd className="font-medium">{data.bank_details.account_holder}</dd>
-              </div>
-            ) : null}
-            {data.bank_details.clabe ? (
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2">
-                <dt className="text-muted-foreground">CLABE</dt>
-                <dd className="flex items-center gap-2">
-                  <span className="precio font-medium">{data.bank_details.clabe}</span>
-                  <button
-                    type="button"
-                    onClick={() => copiar(data.bank_details.clabe, 'CLABE copiada')}
-                    aria-label="Copiar CLABE"
-                    className="no-imprimir flex h-9 w-9 items-center justify-center rounded-full border border-border hover:bg-secondary"
+      <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+        <div className="space-y-4">
+          {/* La cita es lo que más necesita la clienta: va primero y con acciones. */}
+          <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+            <h2 className="text-base">Tu entrega</h2>
+            <div className="mt-3 space-y-3">
+              <p className="flex items-start gap-3">
+                <Clock className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
+                <span>
+                  <span className="block font-semibold first-letter:uppercase">
+                    {fechaLarga(reservation.delivery_date)}
+                  </span>
+                  <span className="precio block text-sm text-muted-foreground">
+                    {reservation.slot_start} a {reservation.slot_end}
+                  </span>
+                </span>
+              </p>
+              <p className="flex items-start gap-3">
+                <MapPin className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
+                <span>
+                  <span className="block font-semibold">{reservation.delivery_point_name}</span>
+                  {reservation.delivery_point_reference ? (
+                    <span className="block text-sm leading-relaxed text-muted-foreground">
+                      {reservation.delivery_point_reference}
+                    </span>
+                  ) : null}
+                </span>
+              </p>
+            </div>
+            {!cerrada ? (
+              <div className="no-imprimir mt-4 flex flex-wrap gap-2">
+                {reservation.slot_start && reservation.slot_end ? (
+                  <Button asChild variant="outline" className={outline}>
+                    <a href={calendarioUrl(reservation, data.settings.shop_name)} target="_blank" rel="noreferrer">
+                      <CalendarPlus className="mr-2 h-4 w-4" /> Agregar a mi calendario
+                    </a>
+                  </Button>
+                ) : null}
+                <Button asChild variant="outline" className={outline}>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(reservation.delivery_point_name)}`}
+                    target="_blank"
+                    rel="noreferrer"
                   >
-                    <Copy className="h-4 w-4" />
-                  </button>
-                </dd>
+                    <Navigation className="mr-2 h-4 w-4" /> Cómo llegar
+                  </a>
+                </Button>
               </div>
             ) : null}
-            {data.bank_details.account_number ? (
-              <div className="flex flex-wrap justify-between gap-2">
-                <dt className="text-muted-foreground">Cuenta</dt>
-                <dd className="precio font-medium">{data.bank_details.account_number}</dd>
+            {data.settings.delivery_instructions ? (
+              <div className="mt-4 rounded-xl bg-secondary/60 p-3">
+                <p className="text-sm font-semibold">Instrucciones para la entrega</p>
+                <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+                  {data.settings.delivery_instructions}
+                </p>
               </div>
             ) : null}
-          </dl>
-          {data.bank_details.transfer_instructions ? (
-            <p className="mt-3 whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
-              {data.bank_details.transfer_instructions}
-            </p>
-          ) : null}
-        </section>
-      ) : null}
+          </section>
 
-      {data.settings.delivery_instructions ? (
-        <section className="mt-4 rounded-2xl border border-border bg-secondary/60 p-4">
-          <h2 className="text-base">Instrucciones para la entrega</h2>
-          <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-            {data.settings.delivery_instructions}
+          {/* Datos bancarios: entregados solo por API con token válido */}
+          {!cerrada && (data.bank_details.clabe || data.bank_details.account_number) ? (
+            <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+              <h2 className="flex items-center gap-2 text-base">
+                <Building2 className="h-4 w-4 text-primary" /> Datos para tu transferencia
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                Usa estos datos <strong className="text-foreground">solo al momento de la entrega</strong>,
+                frente a la persona que te entrega tus productos.
+              </p>
+              <dl className="mt-3 space-y-2 text-sm">
+                {data.bank_details.bank_name ? (
+                  <div className="flex flex-wrap justify-between gap-2 border-b border-border pb-2">
+                    <dt className="text-muted-foreground">Banco</dt>
+                    <dd className="font-medium">{data.bank_details.bank_name}</dd>
+                  </div>
+                ) : null}
+                {data.bank_details.account_holder ? (
+                  <div className="flex flex-wrap justify-between gap-2 border-b border-border pb-2">
+                    <dt className="text-muted-foreground">Titular</dt>
+                    <dd className="font-medium">{data.bank_details.account_holder}</dd>
+                  </div>
+                ) : null}
+                {data.bank_details.clabe ? (
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2">
+                    <dt className="text-muted-foreground">CLABE</dt>
+                    <dd className="flex items-center gap-2">
+                      <span className="precio font-medium">{data.bank_details.clabe}</span>
+                      <button
+                        type="button"
+                        onClick={() => copiar(data.bank_details.clabe, 'CLABE copiada')}
+                        aria-label="Copiar CLABE"
+                        className="no-imprimir flex h-9 w-9 items-center justify-center rounded-full border border-border hover:bg-secondary"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </button>
+                    </dd>
+                  </div>
+                ) : null}
+                {data.bank_details.account_number ? (
+                  <div className="flex flex-wrap justify-between gap-2">
+                    <dt className="text-muted-foreground">Cuenta</dt>
+                    <dd className="precio font-medium">{data.bank_details.account_number}</dd>
+                  </div>
+                ) : null}
+              </dl>
+              {data.bank_details.transfer_instructions ? (
+                <p className="mt-3 whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
+                  {data.bank_details.transfer_instructions}
+                </p>
+              ) : null}
+            </section>
+          ) : null}
+        </div>
+
+        <section className="rounded-2xl border border-border bg-card p-4 sm:p-5 lg:sticky lg:top-20">
+          <h2 className="text-base">Productos apartados</h2>
+          <ul className="mt-1 divide-y divide-border">
+            {reservation.items.map((item) => (
+              <li
+                key={`${item.product_name}-${item.variant_label}-${item.quantity}`}
+                className="flex items-start gap-3 py-3"
+              >
+                {item.image_url ? (
+                  <img
+                    src={item.image_url}
+                    alt=""
+                    loading="lazy"
+                    className="h-14 w-14 flex-shrink-0 rounded-lg bg-white object-cover"
+                  />
+                ) : null}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">{item.product_name}</p>
+                  {item.variant_label ? (
+                    <p className="text-xs text-muted-foreground">{item.variant_label}</p>
+                  ) : null}
+                  <p className="precio mt-1 text-xs text-muted-foreground">
+                    {item.quantity} × {pesos(item.unit_price)}
+                  </p>
+                </div>
+                <span className="precio text-sm font-semibold">{pesos(item.line_total)}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-1 flex items-center justify-between border-t border-border pt-3">
+            <span className="text-sm font-semibold">Total a pagar al recibir</span>
+            <span className="precio text-2xl font-bold">{pesos(reservation.total_amount)}</span>
+          </div>
+          <p className="mt-3 rounded-xl bg-accent/60 px-3 py-2.5 text-xs font-medium leading-relaxed text-accent-foreground">
+            {AVISO_SIN_PAGO}
           </p>
         </section>
-      ) : null}
+      </div>
 
-      <p className="mt-4 rounded-xl border border-primary/30 bg-accent px-4 py-3 text-sm font-medium leading-relaxed text-accent-foreground">
-        {AVISO_SIN_PAGO}
-      </p>
-
-      <div className="no-imprimir mt-5 flex flex-wrap gap-2">
-        <Button
-          type="button"
-          onClick={() => copiar(resumenTexto, 'Resumen copiado')}
-          variant="outline"
-          className="tap rounded-full !bg-transparent hover:!bg-transparent"
-        >
-          <Copy className="mr-2 h-4 w-4" /> Copiar resumen
-        </Button>
-        <Button
-          type="button"
-          onClick={() => window.print()}
-          variant="outline"
-          className="tap rounded-full !bg-transparent hover:!bg-transparent"
-        >
-          <Printer className="mr-2 h-4 w-4" /> Imprimir o guardar como PDF
-        </Button>
+      <div className="no-imprimir mt-6 flex flex-wrap gap-2">
         {data.settings.contact_whatsapp ? (
           <Button asChild className="tap rounded-full">
             <a
@@ -392,46 +428,56 @@ export default function Confirmacion() {
             </a>
           </Button>
         ) : null}
-      </div>
-
-      <div className="no-imprimir mt-4 rounded-xl border border-border bg-card p-4">
-        <p className="text-sm font-semibold">Tu enlace privado</p>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Este enlace es único y personal. Guárdalo para consultar el estado de tu apartado sin necesidad
-          de cuenta.
-        </p>
-        <Button
-          type="button"
-          variant="ghost"
-          className="tap mt-2 px-0 text-primary"
-          onClick={() => copiar(window.location.href, 'Enlace privado copiado')}
-        >
-          Copiar mi enlace privado
+        <Button type="button" onClick={() => copiar(resumenTexto, 'Resumen copiado')} variant="outline" className={outline}>
+          <Copy className="mr-2 h-4 w-4" /> Copiar resumen
+        </Button>
+        <Button type="button" onClick={() => window.print()} variant="outline" className={outline}>
+          <Printer className="mr-2 h-4 w-4" /> Imprimir o guardar PDF
         </Button>
       </div>
 
-      {!cerrada ? (
-        <div className="no-imprimir mt-4 rounded-xl border border-border bg-card p-4">
-          <p className="text-sm font-semibold">¿Ya no puedes asistir?</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Cancela tu apartado para liberar los productos. La tienda verá la cancelación.
-          </p>
+      <div className="no-imprimir mt-6 divide-y divide-border rounded-2xl border border-border bg-card">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div className="max-w-prose">
+            <p className="text-sm font-semibold">Tu enlace privado</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+              Es único y personal: guárdalo para consultar tu apartado cuando quieras, sin crear cuenta.
+            </p>
+          </div>
           <Button
             type="button"
-            variant="ghost"
-            disabled={cancelando}
-            className="tap mt-2 px-0 text-destructive"
-            onClick={cancelarApartado}
+            variant="outline"
+            className={outline}
+            onClick={() => copiar(window.location.href, 'Enlace privado copiado')}
           >
-            {cancelando ? 'Cancelando…' : 'Cancelar mi apartado'}
+            Copiar enlace
           </Button>
         </div>
-      ) : null}
+        {!cerrada ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div className="max-w-prose">
+              <p className="text-sm font-semibold">¿Ya no puedes asistir?</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                Cancela para liberar los productos. La tienda verá la cancelación.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={cancelando}
+              className="tap rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={cancelarApartado}
+            >
+              {cancelando ? 'Cancelando…' : 'Cancelar mi apartado'}
+            </Button>
+          </div>
+        ) : null}
+      </div>
 
-      <div className="no-imprimir mt-5">
-        <Button asChild variant="outline" className="tap rounded-full !bg-transparent hover:!bg-transparent">
-          <Link to="/catalogo">Seguir viendo el catálogo</Link>
-        </Button>
+      <div className="no-imprimir mt-6 text-center">
+        <Link to="/catalogo" className="text-sm font-semibold text-primary underline-offset-4 hover:underline">
+          Seguir viendo el catálogo
+        </Link>
       </div>
     </ShopLayout>
   );

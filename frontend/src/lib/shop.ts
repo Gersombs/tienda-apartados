@@ -287,7 +287,7 @@ export function pesos(value: number): string {
   return `$${Math.round(Number(value) || 0).toLocaleString('es-MX')}`;
 }
 
-const MESES = [
+export const MESES = [
   'enero',
   'febrero',
   'marzo',
