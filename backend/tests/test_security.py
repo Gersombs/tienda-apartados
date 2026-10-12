@@ -397,3 +397,15 @@ def test_admin_responses_never_return_password_hashes(client):
     assert response.status_code == 200
     assert "password" not in response.text.lower()
     assert "hash" not in response.text.lower()
+
+
+def test_public_reservations_are_rate_limited_per_ip(client):
+    for _ in range(5):
+        create_reservation(client)
+    with db_connection() as db:
+        count = db.execute("SELECT COUNT(*) FROM reservations").fetchone()[0]
+
+    blocked = client.post("/api/v1/shop/reservations", json=reservation_payload(client))
+    assert blocked.status_code == 429
+    with db_connection() as db:
+        assert db.execute("SELECT COUNT(*) FROM reservations").fetchone()[0] == count

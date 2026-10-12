@@ -8,7 +8,7 @@ se devuelven en `/confirmacion` cuando se presenta un token privado válido.
 import logging
 from typing import Annotated, Any, Dict, List, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +17,7 @@ from core.config import settings as app_settings
 from models.categories import Categories
 from models.products import Products
 from models.uploaded_images import Uploaded_images
+from routers.auth import LoginRateLimiter, _rate_keys
 from schemas.shop import (
     AvailabilityRequest,
     AvailabilityPublicResponse,
@@ -53,6 +54,8 @@ from services.reservation_engine import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/shop", tags=["shop"])
+# shortcut: límite en memoria por IP (1 réplica); con varias réplicas, moverlo al proxy o a la BD.
+reservation_limiter = LoginRateLimiter(max_attempts=5, window_seconds=600)
 
 
 async def _categories_map(db: AsyncSession) -> Dict[int, Categories]:
@@ -293,13 +296,15 @@ async def availability(
 
 @router.post("/reservations", response_model=ReservationCreatedPublic)
 async def submit_reservation(
-    data: ReservationPublicCreate, db: AsyncSession = Depends(get_db)
+    data: ReservationPublicCreate, request: Request, db: AsyncSession = Depends(get_db)
 ) -> Dict[str, Any]:
     """Crea la solicitud de apartado y envía los correos correspondientes.
 
     La confirmación siempre se devuelve, incluso si el correo falla: el error
     queda registrado en la bitácora para reenviarse desde el CRM.
     """
+    ip_key = _rate_keys(request, data.email)[0]
+    reservation_limiter.check(ip_key)
     try:
         created = await create_reservation(
             db,
@@ -325,6 +330,7 @@ async def submit_reservation(
         logger.error("Error creando la reservación: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail="No pudimos registrar tu apartado. Intenta de nuevo.")
 
+    reservation_limiter.fail(ip_key)  # cuenta sólo los apartados creados
     try:
         await mailer.dispatch_reservation_emails(
             db,

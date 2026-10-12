@@ -1045,16 +1045,38 @@ async def clean_variant_sku(db: AsyncSession, raw: Optional[str], variant_id: Op
     return sku
 
 
+async def ensure_variant_kind(
+    db: AsyncSession, product_id: int, option_value: str, variant_id: Optional[int] = None
+) -> None:
+    """Un producto es de pieza única (una variante sin nombre) o tiene variantes con nombre, no ambas."""
+    query = select(Product_variants.option_value).where(Product_variants.product_id == product_id)
+    if variant_id is not None:
+        query = query.where(Product_variants.id != variant_id)
+    others = (await db.execute(query)).scalars().all()
+    if not option_value and others:
+        raise HTTPException(
+            status_code=400,
+            detail="Este producto ya tiene variantes; ajusta las piezas en cada una.",
+        )
+    if option_value and any(not value for value in others):
+        raise HTTPException(
+            status_code=400,
+            detail="Este producto es de pieza única. Elimina la pieza única antes de agregar tonos o tamaños.",
+        )
+
+
 @router.post("/variants")
 async def create_variant(
     data: VariantPayload,
     admin: Admin_accounts = Depends(get_admin),
     db: AsyncSession = Depends(get_db),
 ) -> Dict[str, Any]:
+    option_value = sanitize_text(data.option_value, 80)
+    await ensure_variant_kind(db, data.product_id, option_value)
     variant = Product_variants(
         product_id=data.product_id,
         option_name=sanitize_text(data.option_name, 60),
-        option_value=sanitize_text(data.option_value, 80),
+        option_value=option_value,
         sku=await clean_variant_sku(db, data.sku),
         stock=max(0, int(data.stock or 0)),
         reserved_stock=0,
@@ -1095,6 +1117,7 @@ async def update_variant(
     delta = new_stock - int(variant.stock or 0)
     variant.option_name = sanitize_text(data.option_name, 60)
     variant.option_value = sanitize_text(data.option_value, 80)
+    await ensure_variant_kind(db, variant.product_id, variant.option_value, variant_id)
     variant.sku = await clean_variant_sku(db, data.sku, variant_id)
     variant.price_delta = money(data.price_delta)
     variant.is_active = data.is_active

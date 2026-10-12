@@ -30,6 +30,7 @@ from core.auth import hash_password, private_token_hash
 from core.config import settings
 from main import app
 from routers.auth import login_limiter
+from routers.shop import reservation_limiter
 
 
 ADMIN_EMAIL = "admin@example.com"
@@ -63,6 +64,7 @@ def client():
 def clean_auth_state(client: TestClient):
     client.cookies.clear()
     login_limiter.reset_for_tests()
+    reservation_limiter.reset_for_tests()
     yield
     client.cookies.clear()
 

@@ -113,19 +113,33 @@ def test_variants_without_sku_coexist_and_duplicate_sku_is_a_clear_error(client)
     assert edit.status_code == 400
 
 
-def test_single_piece_variant_has_no_name_or_label(client):
+def test_single_piece_variant_has_no_name_and_never_mixes_with_named_ones(client):
     headers = {"X-CSRF-Token": login(client)}
-    created = client.post(
-        "/api/v1/crm/variants",
-        json={"product_id": _product_id(), "option_name": "", "option_value": "", "stock": 2},
-        headers=headers,
+    slug = f"pieza-{uuid.uuid4().hex[:8]}"
+    product = client.post(
+        "/api/v1/crm/products", json={"name": "Pieza única", "slug": slug, "price": 100}, headers=headers
     )
+    assert product.status_code == 200, product.text
+    product_id = product.json()["id"]
+    single = {"product_id": product_id, "option_name": "", "option_value": "", "stock": 2}
+    named = {"product_id": product_id, "option_name": "Tono", "option_value": "Rojo", "stock": 1}
+
+    created = client.post("/api/v1/crm/variants", json=single, headers=headers)
     assert created.status_code == 200, created.text
     with db_connection() as db:
         row = db.execute(
             "SELECT option_name, option_value, stock FROM product_variants WHERE id=?", (created.json()["id"],)
         ).fetchone()
     assert tuple(row) == ("", "", 2)
+
+    mixed = client.post("/api/v1/crm/variants", json=named, headers=headers)
+    assert mixed.status_code == 400
+    assert "pieza única" in mixed.json()["detail"]
+
+    assert client.delete(f"/api/v1/crm/variants/{created.json()['id']}", headers=headers).status_code == 200
+    assert client.post("/api/v1/crm/variants", json=named, headers=headers).status_code == 200
+    second_single = client.post("/api/v1/crm/variants", json=single, headers=headers)
+    assert second_single.status_code == 400
 
 
 def test_variant_creation_records_only_positive_stock_and_rolls_back(client, monkeypatch):

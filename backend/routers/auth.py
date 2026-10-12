@@ -38,23 +38,29 @@ DUMMY_PASSWORD_HASH = hash_password("not-a-real-admin-password")
 class LoginRateLimiter:
     """Process-local limiter; production should also enforce a limit at the edge."""
 
-    def __init__(self) -> None:
+    def __init__(self, max_attempts: int | None = None, window_seconds: int | None = None) -> None:
         self._attempts: dict[str, deque[float]] = defaultdict(deque)
+        self._max = max_attempts
+        self._window = window_seconds
+
+    @property
+    def window(self) -> int:
+        return self._window or settings.login_window_seconds
 
     def _trim(self, key: str, now: float) -> deque[float]:
         attempts = self._attempts[key]
-        cutoff = now - settings.login_window_seconds
+        cutoff = now - self.window
         while attempts and attempts[0] <= cutoff:
             attempts.popleft()
         return attempts
 
     def check(self, key: str) -> None:
         now = time.monotonic()
-        if len(self._trim(key, now)) >= settings.login_max_attempts:
+        if len(self._trim(key, now)) >= (self._max or settings.login_max_attempts):
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Demasiados intentos. Espera antes de volver a intentar.",
-                headers={"Retry-After": str(settings.login_window_seconds)},
+                headers={"Retry-After": str(self.window)},
             )
 
     def fail(self, key: str) -> None:

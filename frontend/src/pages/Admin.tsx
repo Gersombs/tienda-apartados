@@ -2224,6 +2224,10 @@ function CatalogTab({ toast }: { toast: ToastFn }) {
                   if (saved) load();
                 }}
               />
+            ) : product.variants.some((v) => !v.option_value) ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Para usar tonos o tamaños, primero elimina la pieza única.
+              </p>
             ) : (
               <Button
                 size="sm"
