@@ -3,11 +3,11 @@ import { Link, useParams } from 'react-router-dom';
 import { ChevronLeft, Link2, MessageCircle, Check } from 'lucide-react';
 import ShopLayout from '@/components/ShopLayout';
 import ProductCardItem from '@/components/ProductCardItem';
+import TrustPoints from '@/components/TrustPoints';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import {
-  AVISO_SIN_PAGO,
   ProductCard,
   ProductDetail,
   ProductVariant,
@@ -171,9 +171,10 @@ export default function Producto() {
         {product.category_name || 'Catálogo'}
       </Link>
 
-      <div className="mt-2 grid gap-6 lg:grid-cols-2 lg:gap-10">
-        <div>
-          <div className="overflow-hidden rounded-2xl border border-border bg-muted">
+      <div className="mt-2 grid gap-6 lg:grid-cols-2 lg:gap-12">
+        {/* En escritorio la foto acompaña mientras se lee la descripción. */}
+        <div className="lg:sticky lg:top-20 lg:self-start">
+          <div className="overflow-hidden rounded-3xl bg-white">
             <img
               src={images[imageIndex].url}
               alt={images[imageIndex].alt_text || product.name}
@@ -207,7 +208,9 @@ export default function Producto() {
         </div>
 
         <div>
-          <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-[1.75rem] leading-tight sm:text-4xl">{product.name}</h1>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <p className="precio text-3xl font-bold">{pesos(unitPrice)}</p>
             <span
               className={`rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-wide ${
                 agotado
@@ -219,21 +222,22 @@ export default function Producto() {
             >
               {product.availability}
             </span>
-            {product.tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground"
-              >
-                {tag}
-              </span>
-            ))}
           </div>
-
-          <h1 className="mt-3 text-[1.75rem] leading-tight sm:text-3xl">{product.name}</h1>
-          <p className="precio mt-2 text-3xl font-bold text-primary">{pesos(unitPrice)}</p>
-          <p className="mt-3 max-w-prose text-base leading-relaxed text-muted-foreground">
+          <p className="mt-4 max-w-prose text-base leading-relaxed text-muted-foreground">
             {product.short_description}
           </p>
+          {product.tags.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {product.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          ) : null}
 
           {/* Variantes; un producto de pieza única tiene una variante sin nombre y no muestra selector. */}
           {product.variants.length > 0 && !product.variants.some((v) => v.option_value) && variant ? (
@@ -324,12 +328,10 @@ export default function Producto() {
             </div>
           )}
 
-          <p className="mt-4 rounded-xl border border-border bg-card px-4 py-3 text-sm leading-relaxed">
-            {AVISO_SIN_PAGO}
-          </p>
+          <TrustPoints className="mt-6 rounded-2xl bg-accent/50 p-4" />
 
           {/* Compartir */}
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-5 flex flex-wrap gap-2">
             <Button
               type="button"
               variant="outline"
@@ -372,7 +374,7 @@ export default function Producto() {
           </div>
 
           {/* Detalle */}
-          <div className="mt-8 space-y-5">
+          <div className="mt-8 divide-y divide-border border-t border-border [&>section]:py-5">
             {product.full_description ? (
               <section>
                 <h2 className="text-lg">Descripción</h2>

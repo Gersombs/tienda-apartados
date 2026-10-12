@@ -6,6 +6,7 @@ import ProductCardItem from '@/components/ProductCardItem';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Category,
@@ -30,8 +31,8 @@ interface ProductsResponse {
 
 const ORDENES = [
   { value: 'destacados', label: 'Destacados' },
-  { value: 'precio_asc', label: 'Precio menor' },
-  { value: 'precio_desc', label: 'Precio mayor' },
+  { value: 'precio_asc', label: 'Menor precio' },
+  { value: 'precio_desc', label: 'Mayor precio' },
   { value: 'novedades', label: 'Novedades' },
 ];
 
@@ -260,22 +261,19 @@ export default function Catalogo() {
           <SlidersHorizontal className="mr-2 h-4 w-4" />
           Filtros
         </Button>
-        <div className="chips flex flex-1 gap-2 overflow-x-auto">
-          {ORDENES.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => updateParam('orden', option.value)}
-              className={`tap flex flex-shrink-0 items-center rounded-full border px-4 text-sm ${
-                sort === option.value
-                  ? 'border-foreground bg-foreground text-background'
-                  : 'border-border bg-card'
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+        <Select value={sort} onValueChange={(value) => updateParam('orden', value)}>
+          <SelectTrigger aria-label="Ordenar productos" className="tap ml-auto w-auto gap-1.5 rounded-full px-4">
+            <span className="text-muted-foreground">Ordenar:</span>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent align="end">
+            {ORDENES.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {filtersOpen ? (

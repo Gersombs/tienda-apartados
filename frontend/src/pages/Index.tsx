@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, CalendarCheck, Handshake, MapPin, ShieldCheck, Sparkles, Wallet } from 'lucide-react';
+import { ArrowRight, CalendarCheck, MapPin, Sparkles } from 'lucide-react';
 import ShopLayout from '@/components/ShopLayout';
 import ProductCardItem from '@/components/ProductCardItem';
+import TrustPoints from '@/components/TrustPoints';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  AVISO_SIN_PAGO,
   Category,
   DeliveryPoint,
   ProductCard,
@@ -40,12 +40,6 @@ const PASOS = [
     titulo: 'Recibe y transfiere',
     texto: 'Nos vemos en el punto acordado y ahí realizas la transferencia del total.',
   },
-];
-
-const CONFIANZA = [
-  { icon: ShieldCheck, texto: 'Sin anticipo' },
-  { icon: Handshake, texto: 'Entrega en persona' },
-  { icon: Wallet, texto: 'Pagas al recibir' },
 ];
 
 // Clases fijas para que Tailwind las incluya; con pocas categorías la rejilla no queda medio vacía.
@@ -122,14 +116,7 @@ export default function Index() {
               <Link to="/como-funciona">Cómo funciona</Link>
             </Button>
           </div>
-          <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm font-medium">
-            {CONFIANZA.map(({ icon: Icon, texto }) => (
-              <li key={texto} className="flex items-center gap-1.5">
-                <Icon className="h-4 w-4 text-primary" /> {texto}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{AVISO_SIN_PAGO}</p>
+          <TrustPoints className="mt-6" />
         </div>
 
         <div className="overflow-hidden rounded-3xl bg-muted shadow-xl shadow-foreground/10 lg:col-span-2">
