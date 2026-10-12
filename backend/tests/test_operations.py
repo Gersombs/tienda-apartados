@@ -87,6 +87,47 @@ def _product_id() -> int:
         return int(db.execute("SELECT id FROM products ORDER BY id LIMIT 1").fetchone()[0])
 
 
+def test_variants_without_sku_coexist_and_duplicate_sku_is_a_clear_error(client):
+    headers = {"X-CSRF-Token": login(client)}
+    product_id = _product_id()
+    sku = f"DUP-{uuid.uuid4().hex}"
+
+    def create(value: str, sku_value: str):
+        return client.post(
+            "/api/v1/crm/variants",
+            json={"product_id": product_id, "option_name": "Tono", "option_value": value, "sku": sku_value},
+            headers=headers,
+        )
+
+    assert create("Sin SKU 1", "").status_code == 200
+    second = create("Sin SKU 2", "  ")
+    assert second.status_code == 200, second.text
+    assert create("Con SKU", sku).status_code == 200
+    duplicate = create("Repetido", sku)
+    assert duplicate.status_code == 400 and "SKU" in duplicate.json()["detail"]
+    edit = client.put(
+        f"/api/v1/crm/variants/{second.json()['id']}",
+        json={"product_id": product_id, "option_name": "Tono", "option_value": "Sin SKU 2", "sku": sku},
+        headers=headers,
+    )
+    assert edit.status_code == 400
+
+
+def test_single_piece_variant_has_no_name_or_label(client):
+    headers = {"X-CSRF-Token": login(client)}
+    created = client.post(
+        "/api/v1/crm/variants",
+        json={"product_id": _product_id(), "option_name": "", "option_value": "", "stock": 2},
+        headers=headers,
+    )
+    assert created.status_code == 200, created.text
+    with db_connection() as db:
+        row = db.execute(
+            "SELECT option_name, option_value, stock FROM product_variants WHERE id=?", (created.json()["id"],)
+        ).fetchone()
+    assert tuple(row) == ("", "", 2)
+
+
 def test_variant_creation_records_only_positive_stock_and_rolls_back(client, monkeypatch):
     csrf = login(client)
     headers = {"X-CSRF-Token": csrf}

@@ -19,6 +19,7 @@ import {
   Unlink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialogHost, confirmAction } from '@/components/ui/confirm-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -377,6 +378,7 @@ function AdminPanel({ session }: { session: SessionState | null }) {
 
   return (
     <div className="min-h-screen bg-background">
+      <ConfirmDialogHost />
       <header className="sticky top-0 z-20 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex w-full max-w-screen-xl items-center gap-3">
           <div className="min-w-0">
@@ -890,7 +892,12 @@ function ReservationsTab({ toast }: { toast: ToastFn }) {
 
   const generateAndSendPrivateLink = async () => {
     if (!selected) return;
-    if (!window.confirm('Generar un enlace nuevo invalidará inmediatamente el enlace anterior. ¿Continuar?')) {
+    const ok = await confirmAction({
+      title: '¿Generar un enlace nuevo?',
+      description: 'El enlace anterior dejará de funcionar de inmediato.',
+      confirmLabel: 'Generar enlace',
+    });
+    if (!ok) {
       return;
     }
     setWorking(true);
@@ -931,7 +938,13 @@ function ReservationsTab({ toast }: { toast: ToastFn }) {
 
   const revokePrivateLink = async () => {
     if (!selected) return;
-    if (!window.confirm('Revocar el enlace impedirá que la clienta vuelva a abrirlo. ¿Continuar?')) {
+    const ok = await confirmAction({
+      title: '¿Revocar el enlace?',
+      description: 'La clienta ya no podrá volver a abrirlo.',
+      confirmLabel: 'Revocar',
+      destructive: true,
+    });
+    if (!ok) {
       return;
     }
     setWorking(true);
@@ -1196,12 +1209,15 @@ function ReservationsTab({ toast }: { toast: ToastFn }) {
 
             <section className="rounded-2xl border border-border bg-card p-4">
               <h3 className="text-sm font-semibold">Cambiar estado</h3>
+              <Label htmlFor="estado-nota" className="mt-2 block text-xs text-muted-foreground">
+                Motivo o nota del cambio (opcional)
+              </Label>
               <Textarea
+                id="estado-nota"
                 value={statusNote}
                 onChange={(e) => setStatusNote(e.target.value)}
                 rows={2}
-                placeholder="Motivo o nota del cambio (opcional)"
-                className="mt-2 text-sm"
+                className="mt-1 text-sm"
               />
               <div className="mt-2 flex flex-wrap gap-2">
                 {detail.statuses
@@ -1223,12 +1239,15 @@ function ReservationsTab({ toast }: { toast: ToastFn }) {
 
             <section className="rounded-2xl border border-border bg-card p-4">
               <h3 className="text-sm font-semibold">Nota interna</h3>
+              <Label htmlFor="nota-interna" className="mt-2 block text-xs text-muted-foreground">
+                Sólo la ve el equipo, nunca la clienta.
+              </Label>
               <Textarea
+                id="nota-interna"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={3}
-                className="mt-2 text-sm"
-                placeholder="Solo visible para el equipo."
+                className="mt-1 text-sm"
               />
               <Button size="sm" className="tap mt-2 rounded-full" onClick={saveNote} disabled={working}>
                 Guardar nota
@@ -1370,28 +1389,43 @@ function ReservationsTab({ toast }: { toast: ToastFn }) {
 /** Alta o edición de una variante (tono, tamaño…). El stock inicial sólo se pide al crear. */
 function VariantForm({
   productId,
+  productPrice,
+  optionName,
   variant,
   toast,
   onDone,
 }: {
   productId: number;
+  productPrice: number;
+  /** Tipo que ya usan las otras variantes del producto, para no volver a escribirlo. */
+  optionName: string;
   variant: VariantRow | null;
   toast: ToastFn;
   onDone: (saved: boolean) => void;
 }) {
+  // Los números se editan como texto: un campo vacío no obliga a borrar un «0».
   const [draft, setDraft] = useState({
-    option_name: variant?.option_name || 'Presentación',
+    option_name: variant?.option_name ?? optionName,
     option_value: variant?.option_value || '',
-    price_delta: variant?.price_delta ?? 0,
-    stock: 0,
+    price: variant && variant.price_delta !== 0 ? String(productPrice + variant.price_delta) : '',
+    stock: '',
     is_active: variant?.is_active ?? true,
   });
   const [saving, setSaving] = useState(false);
   const prefix = `v-${productId}-${variant?.id ?? 'nueva'}`;
+  const hint = 'mt-0.5 text-xs text-muted-foreground';
 
   const save = async () => {
-    if (!draft.option_value.trim()) {
-      toast({ title: 'Escribe el tono, color o tamaño de la variante.', variant: 'destructive' });
+    if (!draft.option_name.trim() || !draft.option_value.trim()) {
+      toast({
+        title: 'Escribe qué cambia (por ejemplo «Tono») y el nombre de esta opción.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const price = draft.price.trim() === '' ? productPrice : Number(draft.price);
+    if (!Number.isFinite(price) || price <= 0) {
+      toast({ title: 'El precio debe ser mayor que cero.', variant: 'destructive' });
       return;
     }
     setSaving(true);
@@ -1400,13 +1434,14 @@ function VariantForm({
         product_id: productId,
         option_name: draft.option_name,
         option_value: draft.option_value,
-        price_delta: draft.price_delta,
+        // El backend guarda la diferencia contra el precio del producto.
+        price_delta: Math.round((price - productPrice) * 100) / 100,
         is_active: draft.is_active,
       };
       if (variant) {
         await api(`/api/v1/crm/variants/${variant.id}`, 'PUT', payload);
       } else {
-        await api('/api/v1/crm/variants', 'POST', { ...payload, stock: draft.stock });
+        await api('/api/v1/crm/variants', 'POST', { ...payload, stock: Math.max(0, Number(draft.stock) || 0) });
       }
       toast({ title: variant ? 'Variante actualizada' : 'Variante agregada' });
       onDone(true);
@@ -1418,9 +1453,10 @@ function VariantForm({
   };
 
   return (
-    <div className="mt-2 grid gap-2 rounded-xl border border-primary/40 p-3 sm:grid-cols-2">
+    <div className="mt-2 grid gap-3 rounded-xl border border-primary/40 p-3 sm:grid-cols-2">
       <div>
-        <Label htmlFor={`${prefix}-tipo`}>Tipo (Tono, Tamaño…)</Label>
+        <Label htmlFor={`${prefix}-tipo`}>¿Qué cambia entre opciones?</Label>
+        <p className={hint}>Por ejemplo: Tono, Tamaño o Aroma. Es el mismo para todas las variantes del producto.</p>
         <Input
           id={`${prefix}-tipo`}
           value={draft.option_name}
@@ -1429,7 +1465,8 @@ function VariantForm({
         />
       </div>
       <div>
-        <Label htmlFor={`${prefix}-valor`}>Opción (Rojo cereza, 30 ml…)</Label>
+        <Label htmlFor={`${prefix}-valor`}>Nombre de esta opción</Label>
+        <p className={hint}>Por ejemplo: Rojo cereza o 30 ml. Es lo que la clienta elige.</p>
         <Input
           id={`${prefix}-valor`}
           value={draft.option_value}
@@ -1438,24 +1475,29 @@ function VariantForm({
         />
       </div>
       <div>
-        <Label htmlFor={`${prefix}-precio`}>Diferencia de precio (MXN)</Label>
+        <Label htmlFor={`${prefix}-precio`}>Precio de esta opción (MXN)</Label>
+        <p className={hint}>Déjalo vacío si cuesta lo mismo que el producto ({pesos(productPrice)}).</p>
         <Input
           id={`${prefix}-precio`}
           type="number"
-          value={draft.price_delta}
-          onChange={(e) => setDraft({ ...draft, price_delta: Number(e.target.value) })}
+          inputMode="decimal"
+          min={0}
+          value={draft.price}
+          onChange={(e) => setDraft({ ...draft, price: e.target.value })}
           className="precio tap mt-1"
         />
       </div>
       {variant ? null : (
         <div>
           <Label htmlFor={`${prefix}-stock`}>Piezas disponibles</Label>
+          <p className={hint}>Cuántas tienes de esta opción. Vacío = 0.</p>
           <Input
             id={`${prefix}-stock`}
             type="number"
+            inputMode="numeric"
             min={0}
             value={draft.stock}
-            onChange={(e) => setDraft({ ...draft, stock: Math.max(0, Number(e.target.value)) })}
+            onChange={(e) => setDraft({ ...draft, stock: e.target.value })}
             className="precio tap mt-1"
           />
         </div>
@@ -1483,6 +1525,64 @@ function VariantForm({
         </Button>
       </div>
     </div>
+  );
+}
+
+/** Producto sin tonos ni tamaños: una variante sin nombre guarda sus piezas. */
+function SinglePieceStock({
+  productId,
+  toast,
+  onDone,
+}: {
+  productId: number;
+  toast: ToastFn;
+  onDone: () => void;
+}) {
+  const [stock, setStock] = useState('');
+  const [saving, setSaving] = useState(false);
+  const save = async () => {
+    setSaving(true);
+    try {
+      await api('/api/v1/crm/variants', 'POST', {
+        product_id: productId,
+        option_name: '',
+        option_value: '',
+        stock: Math.max(0, Number(stock) || 0),
+        price_delta: 0,
+        is_active: true,
+      });
+      toast({ title: 'Piezas guardadas' });
+      onDone();
+    } catch (e) {
+      toast({ title: apiError(e), variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <li className="rounded-xl bg-amber-500/10 p-3 text-sm">
+      <p className="font-medium text-amber-900">Este producto todavía no se puede apartar.</p>
+      <p className="mt-0.5 text-xs text-amber-900/85">
+        Si no tiene tonos ni tamaños, sólo indica cuántas piezas tienes. Si los tiene, usa «Agregar variante».
+      </p>
+      <div className="mt-2 flex flex-wrap items-end gap-2">
+        <div>
+          <Label htmlFor={`unica-${productId}`}>Piezas disponibles</Label>
+          <Input
+            id={`unica-${productId}`}
+            type="number"
+            inputMode="numeric"
+            min={0}
+            value={stock}
+            onChange={(e) => setStock(e.target.value)}
+            className="precio tap mt-1 w-28"
+          />
+        </div>
+        <Button size="sm" className="tap rounded-full" disabled={saving || !stock} onClick={save}>
+          {saving ? 'Guardando…' : 'Guardar piezas'}
+        </Button>
+      </div>
+    </li>
   );
 }
 
@@ -1541,7 +1641,12 @@ function CategoriesSection({
   };
 
   const remove = async (category: CatalogCategory) => {
-    if (!window.confirm(`¿Eliminar la categoría «${category.name}»?`)) return;
+    const ok = await confirmAction({
+      title: `¿Eliminar la categoría «${category.name}»?`,
+      confirmLabel: 'Eliminar',
+      destructive: true,
+    });
+    if (!ok) return;
     setWorking(true);
     try {
       await api(`/api/v1/crm/categories/${category.id}`, 'DELETE');
@@ -1762,7 +1867,12 @@ function CatalogTab({ toast }: { toast: ToastFn }) {
   };
 
   const removeVariant = async (variant: VariantRow) => {
-    if (!window.confirm(`¿Eliminar la variante «${variant.label}»?`)) return;
+    const ok = await confirmAction({
+      title: `¿Eliminar la variante «${variant.label || 'Pieza única'}»?`,
+      confirmLabel: 'Eliminar',
+      destructive: true,
+    });
+    if (!ok) return;
     setWorking(true);
     try {
       await api(`/api/v1/crm/variants/${variant.id}`, 'DELETE');
@@ -1776,7 +1886,13 @@ function CatalogTab({ toast }: { toast: ToastFn }) {
   };
 
   const removeProduct = async (product: CatalogProduct) => {
-    if (!window.confirm(`¿Eliminar «${product.name}»? Si sólo quieres ocultarlo, usa «Archivado».`)) return;
+    const ok = await confirmAction({
+      title: `¿Eliminar «${product.name}»?`,
+      description: 'Si sólo quieres ocultarlo de la tienda, márcalo como «Archivado».',
+      confirmLabel: 'Eliminar',
+      destructive: true,
+    });
+    if (!ok) return;
     setWorking(true);
     try {
       await api(`/api/v1/crm/products/${product.id}`, 'DELETE');
@@ -1858,11 +1974,15 @@ function CatalogTab({ toast }: { toast: ToastFn }) {
             </div>
             <div>
               <Label htmlFor="p-precio">Precio MXN</Label>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Precio normal. Si un tono o tamaño cuesta distinto, lo indicas en esa variante.
+              </p>
               <Input
                 id="p-precio"
                 type="number"
                 min={0}
-                value={editing.price}
+                inputMode="decimal"
+                value={editing.price || ''}
                 onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) })}
                 className="precio tap mt-1"
               />
@@ -2021,7 +2141,7 @@ function CatalogTab({ toast }: { toast: ToastFn }) {
             <ul className="mt-3 space-y-2 border-t border-border pt-3">
               {product.variants.map((variant) => (
                 <li key={variant.id} className="flex flex-wrap items-center gap-2 text-sm">
-                  <span className="min-w-0 flex-1 truncate">{variant.label}</span>
+                  <span className="min-w-0 flex-1 truncate">{variant.label || 'Pieza única'}</span>
                   <span className="precio text-xs text-muted-foreground">
                     {variant.available_units} libres / {variant.stock} totales
                     {variant.reserved_stock > 0 ? ` · ${variant.reserved_stock} apartadas` : ''}
@@ -2033,8 +2153,7 @@ function CatalogTab({ toast }: { toast: ToastFn }) {
                     onChange={(e) =>
                       setStockDrafts((prev) => ({ ...prev, [variant.id]: e.target.value }))
                     }
-                    placeholder="Nuevo"
-                    aria-label={`Nuevo inventario para ${variant.label}`}
+                    aria-label={`Nuevo inventario para ${variant.label || 'Pieza única'}`}
                     className="precio h-9 w-24"
                   />
                   <Button
@@ -2066,15 +2185,15 @@ function CatalogTab({ toast }: { toast: ToastFn }) {
                 </li>
               ))}
               {product.variants.length === 0 ? (
-                <li className="text-xs font-medium text-amber-800">
-                  Agrega al menos una variante con piezas para que este producto se pueda apartar.
-                </li>
+                <SinglePieceStock productId={product.id} toast={toast} onDone={load} />
               ) : null}
             </ul>
             {variantForm?.productId === product.id ? (
               <VariantForm
                 key={variantForm.variant?.id ?? 'nueva'}
                 productId={product.id}
+                productPrice={product.price}
+                optionName={product.variants.find((v) => v.option_name)?.option_name ?? ''}
                 variant={variantForm.variant}
                 toast={toast}
                 onDone={(saved) => {
@@ -2101,6 +2220,7 @@ function CatalogTab({ toast }: { toast: ToastFn }) {
 
 /* -------------------------- Configuración ------------------------ */
 type DeliverySlot = DeliveryConfig['slots'][number];
+type DeliveryPoint = DeliveryConfig['points'][number];
 
 /** Horarios de un punto de entrega: alta, pausa y borrado. */
 function SlotsEditor({
@@ -2114,7 +2234,7 @@ function SlotsEditor({
   toast: ToastFn;
   onChanged: () => void;
 }) {
-  const [draft, setDraft] = useState({ weekday: 0, start_time: '10:00', end_time: '12:00', capacity: 0 });
+  const [draft, setDraft] = useState({ weekday: 0, start_time: '10:00', end_time: '12:00', capacity: '' });
   const [working, setWorking] = useState(false);
 
   const run = async (action: () => Promise<unknown>, message: string) => {
@@ -2142,6 +2262,7 @@ function SlotsEditor({
   return (
     <div className="mt-3">
       <p className="text-sm font-medium">Horarios</p>
+      <p className="text-xs text-muted-foreground">Cada horario se guarda en cuanto lo agregas.</p>
       {slots.length === 0 ? (
         <p className="text-xs text-amber-800">Sin horarios: las clientas no podrán elegir este punto.</p>
       ) : (
@@ -2171,8 +2292,14 @@ function SlotsEditor({
                 variant="ghost"
                 className="text-xs text-destructive"
                 disabled={working}
-                onClick={() => {
-                  if (!window.confirm('¿Eliminar este horario?')) return;
+                onClick={async () => {
+                  const ok = await confirmAction({
+                    title: '¿Eliminar este horario?',
+                    description: `${WEEKDAY_NAMES[slot.weekday]} ${slot.start_time}–${slot.end_time}`,
+                    confirmLabel: 'Eliminar',
+                    destructive: true,
+                  });
+                  if (!ok) return;
                   void run(() => api(`/api/v1/crm/delivery-slots/${slot.id}`, 'DELETE'), 'Horario eliminado');
                 }}
               >
@@ -2222,15 +2349,20 @@ function SlotsEditor({
           />
         </div>
         <div>
-          <Label htmlFor={`slot-cupo-${pointId}`}>Cupo (0 = sin límite)</Label>
+          <Label htmlFor={`slot-cupo-${pointId}`}>Cupo de apartados</Label>
           <Input
             id={`slot-cupo-${pointId}`}
             type="number"
+            inputMode="numeric"
             min={0}
             value={draft.capacity}
-            onChange={(e) => setDraft({ ...draft, capacity: Math.max(0, Number(e.target.value)) })}
+            aria-describedby={`slot-cupo-ayuda-${pointId}`}
+            onChange={(e) => setDraft({ ...draft, capacity: e.target.value })}
             className="precio tap mt-1"
           />
+          <p id={`slot-cupo-ayuda-${pointId}`} className="mt-0.5 text-xs text-muted-foreground">
+            Vacío = sin límite
+          </p>
         </div>
         <div className="flex items-end">
           <Button
@@ -2242,6 +2374,7 @@ function SlotsEditor({
                 () =>
                   api('/api/v1/crm/delivery-slots', 'POST', {
                     ...draft,
+                    capacity: Math.max(0, Number(draft.capacity) || 0),
                     delivery_point_id: pointId,
                     is_active: true,
                   }),
@@ -2262,6 +2395,8 @@ function SettingsTab({ toast }: { toast: ToastFn }) {
   const [delivery, setDelivery] = useState<DeliveryConfig | null>(null);
   const [store, setStore] = useState<Record<string, string | number>>({});
   const [priv, setPriv] = useState<Record<string, string>>({});
+  // Cambios sin guardar por punto: recargar horarios o guardar otro punto no los borra.
+  const [pointDrafts, setPointDrafts] = useState<Record<number, DeliveryPoint>>({});
   const [working, setWorking] = useState(false);
 
   const load = useCallback(() => {
@@ -2279,6 +2414,21 @@ function SettingsTab({ toast }: { toast: ToastFn }) {
   }, [toast]);
 
   useEffect(load, [load]);
+
+  const refreshDelivery = useCallback(() => {
+    api<DeliveryConfig>('/api/v1/crm/delivery')
+      .then(setDelivery)
+      .catch((e) => toast({ title: apiError(e), variant: 'destructive' }));
+  }, [toast]);
+
+  const editPoint = (saved: DeliveryPoint, patch: Partial<DeliveryPoint>) =>
+    setPointDrafts((drafts) => ({ ...drafts, [saved.id]: { ...(drafts[saved.id] ?? saved), ...patch } }));
+
+  const dropDraft = (id: number) =>
+    setPointDrafts((drafts) => {
+      const { [id]: _dropped, ...rest } = drafts;
+      return rest;
+    });
 
   const saveStore = async () => {
     setWorking(true);
@@ -2304,14 +2454,19 @@ function SettingsTab({ toast }: { toast: ToastFn }) {
     }
   };
 
-  const savePoint = async (point: DeliveryConfig['points'][number]) => {
+  const savePoint = async (point: DeliveryPoint) => {
+    if (!point.name.trim()) {
+      toast({ title: 'Escribe el nombre del punto de entrega.', variant: 'destructive' });
+      return;
+    }
     setWorking(true);
     try {
       // El backend rechaza campos extra: el id va en la URL, no en el cuerpo.
       const { id, ...fields } = point;
       await api(`/api/v1/crm/delivery-points/${id}`, 'PUT', fields);
-      toast({ title: 'Punto de entrega actualizado' });
-      load();
+      toast({ title: 'Punto de entrega guardado' });
+      dropDraft(id);
+      refreshDelivery();
     } catch (e) {
       toast({ title: apiError(e), variant: 'destructive' });
     } finally {
@@ -2323,14 +2478,14 @@ function SettingsTab({ toast }: { toast: ToastFn }) {
     setWorking(true);
     try {
       await api('/api/v1/crm/delivery-points', 'POST', {
-        name: 'Nuevo punto de entrega',
+        name: '',
         kind: 'metro',
         city: 'Ciudad de México',
         sort_order: delivery?.points.length ?? 0,
         is_active: false,
       });
-      toast({ title: 'Punto agregado. Complétalo y actívalo.' });
-      load();
+      toast({ title: 'Punto agregado. Complétalo, actívalo y guárdalo.' });
+      refreshDelivery();
     } catch (e) {
       toast({ title: apiError(e), variant: 'destructive' });
     } finally {
@@ -2338,13 +2493,20 @@ function SettingsTab({ toast }: { toast: ToastFn }) {
     }
   };
 
-  const removePoint = async (point: DeliveryConfig['points'][number]) => {
-    if (!window.confirm(`¿Eliminar «${point.name}» y sus horarios?`)) return;
+  const removePoint = async (point: DeliveryPoint) => {
+    const ok = await confirmAction({
+      title: `¿Eliminar «${point.name || 'este punto'}»?`,
+      description: 'También se borrarán sus horarios.',
+      confirmLabel: 'Eliminar',
+      destructive: true,
+    });
+    if (!ok) return;
     setWorking(true);
     try {
       await api(`/api/v1/crm/delivery-points/${point.id}`, 'DELETE');
       toast({ title: 'Punto eliminado' });
-      load();
+      dropDraft(point.id);
+      refreshDelivery();
     } catch (e) {
       toast({ title: apiError(e), variant: 'destructive' });
     } finally {
@@ -2514,39 +2676,31 @@ function SettingsTab({ toast }: { toast: ToastFn }) {
           <MapPin className="h-4 w-4 text-primary" /> Puntos de entrega y horarios
         </h2>
         <div className="mt-3 space-y-4">
-          {delivery.points.map((point) => {
+          {delivery.points.map((saved) => {
+            const point = pointDrafts[saved.id] ?? saved;
+            const dirty = Boolean(pointDrafts[saved.id]);
             const slots = delivery.slots.filter((s) => s.delivery_point_id === point.id);
             return (
               <div key={point.id} className="rounded-xl border border-border p-3">
                 <div className="grid gap-2 sm:grid-cols-2">
                   <div>
-                    <Label htmlFor={`dp-name-${point.id}`}>Nombre</Label>
+                    <Label htmlFor={`dp-name-${point.id}`}>Nombre (ej. Metro Insurgentes)</Label>
                     <Input
                       id={`dp-name-${point.id}`}
                       value={point.name}
                       onChange={(e) =>
-                        setDelivery({
-                          ...delivery,
-                          points: delivery.points.map((p) =>
-                            p.id === point.id ? { ...p, name: e.target.value } : p,
-                          ),
-                        })
+                        editPoint(saved, { name: e.target.value })
                       }
                       className="tap mt-1"
                     />
                   </div>
                   <div>
-                    <Label htmlFor={`dp-ref-${point.id}`}>Punto de encuentro</Label>
+                    <Label htmlFor={`dp-ref-${point.id}`}>Punto de encuentro (ej. salida a Génova)</Label>
                     <Input
                       id={`dp-ref-${point.id}`}
                       value={point.reference}
                       onChange={(e) =>
-                        setDelivery({
-                          ...delivery,
-                          points: delivery.points.map((p) =>
-                            p.id === point.id ? { ...p, reference: e.target.value } : p,
-                          ),
-                        })
+                        editPoint(saved, { reference: e.target.value })
                       }
                       className="tap mt-1"
                     />
@@ -2557,12 +2711,7 @@ function SettingsTab({ toast }: { toast: ToastFn }) {
                       id={`dp-addr-${point.id}`}
                       value={point.address}
                       onChange={(e) =>
-                        setDelivery({
-                          ...delivery,
-                          points: delivery.points.map((p) =>
-                            p.id === point.id ? { ...p, address: e.target.value } : p,
-                          ),
-                        })
+                        editPoint(saved, { address: e.target.value })
                       }
                       className="tap mt-1"
                     />
@@ -2573,26 +2722,32 @@ function SettingsTab({ toast }: { toast: ToastFn }) {
                     type="checkbox"
                     checked={point.is_active}
                     onChange={(e) =>
-                      setDelivery({
-                        ...delivery,
-                        points: delivery.points.map((p) =>
-                          p.id === point.id ? { ...p, is_active: e.target.checked } : p,
-                        ),
-                      })
+                      editPoint(saved, { is_active: e.target.checked })
                     }
                     className="h-4 w-4 accent-primary"
                   />
                   Activo para nuevas reservaciones
                 </label>
-                <div className="mt-2 flex gap-2">
+                <div className="mt-2 flex flex-wrap items-center gap-2">
                   <Button
                     size="sm"
                     className="tap rounded-full"
                     onClick={() => savePoint(point)}
-                    disabled={working}
+                    disabled={working || !dirty}
                   >
-                    Guardar punto
+                    Guardar datos del punto
                   </Button>
+                  {dirty ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-xs"
+                      onClick={() => dropDraft(point.id)}
+                      disabled={working}
+                    >
+                      Descartar cambios
+                    </Button>
+                  ) : null}
                   <Button
                     size="sm"
                     variant="ghost"
@@ -2603,7 +2758,12 @@ function SettingsTab({ toast }: { toast: ToastFn }) {
                     Eliminar punto
                   </Button>
                 </div>
-                <SlotsEditor pointId={point.id} slots={slots} toast={toast} onChanged={load} />
+                {dirty ? (
+                  <p className="mt-1 text-xs font-medium text-amber-800">
+                    Tienes cambios sin guardar en este punto.
+                  </p>
+                ) : null}
+                <SlotsEditor pointId={point.id} slots={slots} toast={toast} onChanged={refreshDelivery} />
               </div>
             );
           })}

@@ -456,7 +456,6 @@ export default function Apartado() {
               id="whatsapp"
               inputMode="numeric"
               autoComplete="tel-national"
-              placeholder="5512345678"
               value={form.whatsapp}
               onChange={(e) => setForm({ ...form, whatsapp: e.target.value.replace(/[^\d\s-]/g, '') })}
               onBlur={() => setTouched({ ...touched, whatsapp: true })}
@@ -475,7 +474,6 @@ export default function Apartado() {
               id="correo"
               type="email"
               autoComplete="email"
-              placeholder="tucorreo@ejemplo.com"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               onBlur={() => setTouched({ ...touched, email: true })}
@@ -597,11 +595,14 @@ export default function Apartado() {
 
           <div>
             <Label htmlFor="notas">Notas para la entrega (opcional)</Label>
+            <p id="notas-ayuda" className="mt-0.5 text-xs text-muted-foreground">
+              Alguna referencia útil para encontrarnos o pedir algo especial.
+            </p>
             <Textarea
               id="notas"
               value={form.notes}
               rows={3}
-              placeholder="Alguna referencia útil para encontrarnos o pedir algo especial."
+              aria-describedby="notas-ayuda"
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               className="mt-1"
             />

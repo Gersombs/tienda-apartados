@@ -235,8 +235,15 @@ export default function Producto() {
             {product.short_description}
           </p>
 
-          {/* Variantes */}
-          {product.variants.length > 0 ? (
+          {/* Variantes; un producto de pieza única tiene una variante sin nombre y no muestra selector. */}
+          {product.variants.length > 0 && !product.variants.some((v) => v.option_value) && variant ? (
+            <p className="precio mt-4 text-xs text-muted-foreground">
+              {variant.available_units > 0
+                ? `${variant.available_units} ${variant.available_units === 1 ? 'pieza disponible' : 'piezas disponibles'}`
+                : 'Agotado'}
+            </p>
+          ) : null}
+          {product.variants.some((v) => v.option_value) ? (
             <fieldset className="mt-6">
               <legend className="text-sm font-semibold">
                 {product.variants[0].option_name || 'Presentación'}

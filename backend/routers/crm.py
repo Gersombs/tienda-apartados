@@ -1033,6 +1033,18 @@ async def delete_product(
     return {"id": product_id, "deleted": True}
 
 
+async def clean_variant_sku(db: AsyncSession, raw: Optional[str], variant_id: Optional[int] = None) -> Optional[str]:
+    """SKU vacío = sin SKU (NULL); uno repetido es un error claro en vez de un 500."""
+    sku = sanitize_text(raw, 60) or None
+    if sku:
+        query = select(Product_variants.id).where(Product_variants.sku == sku)
+        if variant_id is not None:
+            query = query.where(Product_variants.id != variant_id)
+        if (await db.execute(query)).scalars().first() is not None:
+            raise HTTPException(status_code=400, detail=f"Ya existe otra variante con el SKU {sku}.")
+    return sku
+
+
 @router.post("/variants")
 async def create_variant(
     data: VariantPayload,
@@ -1041,9 +1053,9 @@ async def create_variant(
 ) -> Dict[str, Any]:
     variant = Product_variants(
         product_id=data.product_id,
-        option_name=sanitize_text(data.option_name, 60) or "Presentación",
+        option_name=sanitize_text(data.option_name, 60),
         option_value=sanitize_text(data.option_value, 80),
-        sku=sanitize_text(data.sku, 60),
+        sku=await clean_variant_sku(db, data.sku),
         stock=max(0, int(data.stock or 0)),
         reserved_stock=0,
         price_delta=money(data.price_delta),
@@ -1081,9 +1093,9 @@ async def update_variant(
 
     new_stock = int(variant.stock or 0) if data.stock is None else max(0, int(data.stock))
     delta = new_stock - int(variant.stock or 0)
-    variant.option_name = sanitize_text(data.option_name, 60) or "Presentación"
+    variant.option_name = sanitize_text(data.option_name, 60)
     variant.option_value = sanitize_text(data.option_value, 80)
-    variant.sku = sanitize_text(data.sku, 60)
+    variant.sku = await clean_variant_sku(db, data.sku, variant_id)
     variant.price_delta = money(data.price_delta)
     variant.is_active = data.is_active
     if new_stock < int(variant.reserved_stock or 0):
