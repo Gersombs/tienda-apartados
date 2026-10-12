@@ -714,3 +714,62 @@ def test_new_store_rejects_short_password_before_touching_the_database(tmp_path)
     assert result.returncode != 0
     assert "12 caracteres" in result.stderr
     assert not database.exists()
+
+
+def test_unused_photo_cleanup_keeps_every_referenced_or_recent_photo(client):
+    import asyncio
+    from datetime import timedelta
+
+    from sqlalchemy import delete, update
+    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+
+    from cli import unused_image_ids
+    from core.time_utils import utc_now
+    from models.categories import Categories
+    from models.reservation_items import Reservation_items
+    from models.uploaded_images import Uploaded_images
+
+    async def scenario():
+        engine = create_async_engine(f"sqlite+aiosqlite:///{TEST_DB.as_posix()}")
+        try:
+            async with AsyncSession(engine, expire_on_commit=False) as db:
+                old = utc_now() - timedelta(days=3)
+                photos = [
+                    Uploaded_images(content_type="image/webp", size_bytes=1, data=b"x", created_at=created)
+                    for created in (old, old, old, utc_now())
+                ]
+                db.add_all(photos)
+                await db.commit()
+                in_category, in_old_reservation, unused, fresh = (photo.id for photo in photos)
+                await db.execute(
+                    update(Categories)
+                    .where(Categories.id == _category_id())
+                    .values(image_url=f"/api/v1/shop/images/{in_category}")
+                )
+                await db.execute(
+                    update(Reservation_items)
+                    .where(Reservation_items.id == _reservation_item_id())
+                    .values(image_url=f"/api/v1/shop/images/{in_old_reservation}")
+                )
+                await db.commit()
+                found = await unused_image_ids(db)
+                await db.execute(delete(Uploaded_images).where(Uploaded_images.id.in_([p.id for p in photos])))
+                await db.commit()
+                return found, in_category, in_old_reservation, unused, fresh
+        finally:
+            await engine.dispose()
+
+    create_reservation(client)
+    found, in_category, in_old_reservation, unused, fresh = asyncio.run(scenario())
+    assert unused in found
+    assert {in_category, in_old_reservation, fresh}.isdisjoint(found)
+
+
+def _category_id() -> int:
+    with db_connection() as db:
+        return int(db.execute("SELECT id FROM categories ORDER BY id LIMIT 1").fetchone()[0])
+
+
+def _reservation_item_id() -> int:
+    with db_connection() as db:
+        return int(db.execute("SELECT id FROM reservation_items ORDER BY id DESC LIMIT 1").fetchone()[0])

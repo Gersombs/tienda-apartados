@@ -5,19 +5,28 @@ from __future__ import annotations
 import argparse
 import asyncio
 import getpass
+import importlib
 import json
+import pkgutil
+import re
 import sys
 import uuid
+from datetime import timedelta
 
-from sqlalchemy import delete, make_url, select
+from sqlalchemy import String, delete, func, make_url, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+import models
 
 from core.auth import hash_password, validate_admin_email
 from core.config import settings
 from core.database_url import normalize_database_url
-from core.database import db_manager
+from core.database import Base, db_manager
+from core.time_utils import utc_now
 from models.admin_accounts import Admin_accounts
 from models.admin_sessions import Admin_sessions
 from models.store_settings import Store_settings
+from models.uploaded_images import Uploaded_images
 from services.database import close_database, initialize_database
 from services.migrations import upgrade_database
 from services.mock_data import MOCK_DATA_DIR, initialize_production_catalog
@@ -119,6 +128,50 @@ async def init_catalog() -> None:
         await close_database()
 
 
+IMAGE_URL = re.compile(r"/api/v1/shop/images/(\d+)")
+
+
+async def unused_image_ids(db: AsyncSession, min_age: timedelta = timedelta(days=1)) -> list[int]:
+    """Fotos subidas que ningún texto de la base menciona (productos, categorías,
+    portada, logo y también apartados viejos, que guardan su propia copia de la URL).
+
+    Las de menos de `min_age` se respetan: pueden estar a medio guardar en el panel.
+    """
+    for module in pkgutil.iter_modules(models.__path__):
+        importlib.import_module(f"models.{module.name}")
+    used: set[int] = set()
+    for table in Base.metadata.sorted_tables:
+        columns = [c for c in table.columns if isinstance(c.type, String)]
+        if table.name == Uploaded_images.__tablename__ or not columns:
+            continue
+        for row in await db.execute(select(*columns)):
+            for value in row:
+                used.update(int(found) for found in IMAGE_URL.findall(value or ""))
+    candidates = await db.execute(
+        select(Uploaded_images.id).where(Uploaded_images.created_at < utc_now() - min_age)
+    )
+    return [image_id for image_id in candidates.scalars() if image_id not in used]
+
+
+async def clean_images(delete_them: bool) -> None:
+    await initialize_database()
+    try:
+        async with db_manager.async_session_maker() as db:
+            ids = await unused_image_ids(db)
+            size = (
+                await db.execute(select(func.coalesce(func.sum(Uploaded_images.size_bytes), 0)).where(Uploaded_images.id.in_(ids)))
+            ).scalar_one() if ids else 0
+            print(f"Fotos sin usar: {len(ids)} ({size / 1_000_000:.1f} MB).")
+            if ids and delete_them:
+                await db.execute(delete(Uploaded_images).where(Uploaded_images.id.in_(ids)))
+                await db.commit()
+                print("Borradas.")
+            elif ids:
+                print("No se borró nada. Agrega --borrar para eliminarlas.")
+    finally:
+        await close_database()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Mantenimiento local de Nébula Beauty MX")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -143,12 +196,18 @@ def main() -> int:
     store.add_argument("--admin-nombre", default="Administradora")
     store.add_argument("--whatsapp", default="", help="WhatsApp público a 10 dígitos")
     store.add_argument("--password-stdin", action="store_true")
+    images = subparsers.add_parser(
+        "limpiar-fotos",
+        help="Mostrar (o borrar con --borrar) las fotos subidas que ya nada usa",
+    )
+    images.add_argument("--borrar", action="store_true", help="Borrarlas de verdad")
     args = parser.parse_args()
 
-    if args.command in {"create-admin", "nueva-tienda"}:
+    if args.command in {"create-admin", "nueva-tienda", "limpiar-fotos"}:
         # Muestra el destino antes de pedir la contraseña: evita crear la tienda en la base equivocada.
         target = make_url(normalize_database_url(settings.database_url).url)
         print(f"Base de datos: {target.render_as_string(hide_password=True)}")
+    if args.command in {"create-admin", "nueva-tienda"}:
         password =sys.stdin.readline().rstrip("\r\n") if args.password_stdin else getpass.getpass("Contraseña: ")
         confirmation = password if args.password_stdin else getpass.getpass("Confirma la contraseña: ")
         if password != confirmation:
@@ -175,6 +234,9 @@ def main() -> int:
         return 0
     if args.command == "init-catalog":
         asyncio.run(init_catalog())
+        return 0
+    if args.command == "limpiar-fotos":
+        asyncio.run(clean_images(args.borrar))
         return 0
     return 2
 

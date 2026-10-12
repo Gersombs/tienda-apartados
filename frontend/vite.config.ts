@@ -137,7 +137,6 @@ export default defineConfig(({ command, mode }) => {
               '@radix-ui/react-slot',
               '@radix-ui/react-tabs',
               '@radix-ui/react-toast',
-              '@radix-ui/react-tooltip',
             ],
             'utils-vendor': [
               'clsx',
