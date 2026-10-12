@@ -602,6 +602,35 @@ def test_slot_times_must_be_zero_padded_hours(client):
     assert client.delete(f"/api/v1/crm/delivery-slots/{good.json()['id']}", headers=headers).status_code == 200
 
 
+def test_same_point_day_and_start_time_cannot_be_repeated(client):
+    headers = {"X-CSRF-Token": login(client)}
+    with db_connection() as db:
+        point_id = db.execute("SELECT id FROM delivery_points LIMIT 1").fetchone()[0]
+    slot = {"delivery_point_id": point_id, "weekday": 2, "start_time": "03:15", "end_time": "04:00", "capacity": 2}
+    first = client.post("/api/v1/crm/delivery-slots", json=slot, headers=headers)
+    assert first.status_code == 200, first.text
+    other = client.post(
+        "/api/v1/crm/delivery-slots", json={**slot, "start_time": "04:15", "end_time": "05:00"}, headers=headers
+    )
+    assert other.status_code == 200, other.text
+    try:
+        repeated = client.post("/api/v1/crm/delivery-slots", json={**slot, "end_time": "05:00"}, headers=headers)
+        assert repeated.status_code == 400
+        assert "ya existe" in repeated.json()["detail"]
+        moved = client.put(
+            f"/api/v1/crm/delivery-slots/{other.json()['id']}", json={**slot, "capacity": 5}, headers=headers
+        )
+        assert moved.status_code == 400
+        # Guardar el mismo horario (por ejemplo, sólo cambiar el cupo) sigue funcionando.
+        kept = client.put(
+            f"/api/v1/crm/delivery-slots/{first.json()['id']}", json={**slot, "capacity": 5}, headers=headers
+        )
+        assert kept.status_code == 200, kept.text
+    finally:
+        for created in (first, other):
+            client.delete(f"/api/v1/crm/delivery-slots/{created.json()['id']}", headers=headers)
+
+
 def test_emails_use_operator_sender_and_reply_to_the_right_person(client, monkeypatch):
     import httpx
 

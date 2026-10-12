@@ -1415,6 +1415,22 @@ async def delete_point(
     return {"id": point_id, "deleted": True}
 
 
+async def ensure_slot_is_new(db: AsyncSession, data: SlotPayload, slot_id: Optional[int] = None) -> None:
+    """Un punto no puede tener dos horarios el mismo día a la misma hora de inicio."""
+    query = select(Delivery_slots.id).where(
+        Delivery_slots.delivery_point_id == data.delivery_point_id,
+        Delivery_slots.weekday == max(0, min(6, int(data.weekday))),
+        Delivery_slots.start_time == sanitize_text(data.start_time, 5),
+    )
+    if slot_id is not None:
+        query = query.where(Delivery_slots.id != slot_id)
+    if (await db.execute(query)).scalars().first() is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="Ese horario ya existe en este punto. Cambia su cupo en lugar de crearlo otra vez.",
+        )
+
+
 @router.post("/delivery-slots")
 async def create_slot(
     data: SlotPayload,
@@ -1423,6 +1439,7 @@ async def create_slot(
 ) -> Dict[str, Any]:
     if data.start_time >= data.end_time:
         raise HTTPException(status_code=400, detail="La hora de inicio debe ser menor que la de fin.")
+    await ensure_slot_is_new(db, data)
     slot = Delivery_slots(
         delivery_point_id=data.delivery_point_id,
         weekday=max(0, min(6, int(data.weekday))),
@@ -1450,6 +1467,7 @@ async def update_slot(
         raise HTTPException(status_code=404, detail="Horario no encontrado")
     if data.start_time >= data.end_time:
         raise HTTPException(status_code=400, detail="La hora de inicio debe ser menor que la de fin.")
+    await ensure_slot_is_new(db, data, slot_id)
     slot.delivery_point_id = data.delivery_point_id
     slot.weekday = max(0, min(6, int(data.weekday)))
     slot.start_time = sanitize_text(data.start_time, 5)
