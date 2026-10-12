@@ -476,3 +476,48 @@ def test_upload_rejects_non_images_and_oversized_files(client):
         headers=headers,
     )
     assert huge.status_code == 413
+
+
+def test_editing_variant_details_keeps_current_stock(client):
+    csrf = login(client)
+    headers = {"X-CSRF-Token": csrf}
+    product_id = _product_id()
+    created = client.post(
+        "/api/v1/crm/variants",
+        json={"product_id": product_id, "option_name": "Tono", "option_value": "Rosa", "stock": 4},
+        headers=headers,
+    )
+    assert created.status_code == 200, created.text
+    variant_id = created.json()["id"]
+    with db_connection() as db:
+        db.execute("UPDATE product_variants SET stock=3 WHERE id=?", (variant_id,))
+        db.commit()
+
+    renamed = client.put(
+        f"/api/v1/crm/variants/{variant_id}",
+        json={"product_id": product_id, "option_name": "Tono", "option_value": "Rosa palo"},
+        headers=headers,
+    )
+    assert renamed.status_code == 200, renamed.text
+    assert renamed.json()["stock"] == 3
+    assert client.delete(f"/api/v1/crm/variants/{variant_id}", headers=headers).status_code == 200
+
+
+def test_slot_times_must_be_zero_padded_hours(client):
+    csrf = login(client)
+    headers = {"X-CSRF-Token": csrf}
+    with db_connection() as db:
+        point_id = db.execute("SELECT id FROM delivery_points LIMIT 1").fetchone()[0]
+    bad = client.post(
+        "/api/v1/crm/delivery-slots",
+        json={"delivery_point_id": point_id, "weekday": 1, "start_time": "9:00", "end_time": "10:00"},
+        headers=headers,
+    )
+    assert bad.status_code == 422
+    good = client.post(
+        "/api/v1/crm/delivery-slots",
+        json={"delivery_point_id": point_id, "weekday": 1, "start_time": "09:00", "end_time": "10:00"},
+        headers=headers,
+    )
+    assert good.status_code == 200, good.text
+    assert client.delete(f"/api/v1/crm/delivery-slots/{good.json()['id']}", headers=headers).status_code == 200

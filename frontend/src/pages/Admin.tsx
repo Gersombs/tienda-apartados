@@ -605,6 +605,16 @@ function DashboardTab({ onOpenReservations }: { onOpenReservations: () => void }
 /* ----------------------------- Fotos ----------------------------- */
 type ToastFn = ReturnType<typeof useToast>['toast'];
 
+/** "Labial Mate Cereza" -> "labial-mate-cereza", para URLs limpias. */
+function slugify(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 /** Botón que abre la cámara o la galería y sube las fotos elegidas. */
 function PhotoButton({
   id,
@@ -1351,12 +1361,308 @@ function ReservationsTab({ toast }: { toast: ToastFn }) {
 }
 
 /* ---------------------------- Catálogo --------------------------- */
+/** Alta o edición de una variante (tono, tamaño…). El stock inicial sólo se pide al crear. */
+function VariantForm({
+  productId,
+  variant,
+  toast,
+  onDone,
+}: {
+  productId: number;
+  variant: VariantRow | null;
+  toast: ToastFn;
+  onDone: (saved: boolean) => void;
+}) {
+  const [draft, setDraft] = useState({
+    option_name: variant?.option_name || 'Presentación',
+    option_value: variant?.option_value || '',
+    price_delta: variant?.price_delta ?? 0,
+    stock: 0,
+    is_active: variant?.is_active ?? true,
+  });
+  const [saving, setSaving] = useState(false);
+  const prefix = `v-${productId}-${variant?.id ?? 'nueva'}`;
+
+  const save = async () => {
+    if (!draft.option_value.trim()) {
+      toast({ title: 'Escribe el tono, color o tamaño de la variante.', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        product_id: productId,
+        option_name: draft.option_name,
+        option_value: draft.option_value,
+        price_delta: draft.price_delta,
+        is_active: draft.is_active,
+      };
+      if (variant) {
+        await api(`/api/v1/crm/variants/${variant.id}`, 'PUT', payload);
+      } else {
+        await api('/api/v1/crm/variants', 'POST', { ...payload, stock: draft.stock });
+      }
+      toast({ title: variant ? 'Variante actualizada' : 'Variante agregada' });
+      onDone(true);
+    } catch (e) {
+      toast({ title: apiError(e), variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mt-2 grid gap-2 rounded-xl border border-primary/40 p-3 sm:grid-cols-2">
+      <div>
+        <Label htmlFor={`${prefix}-tipo`}>Tipo (Tono, Tamaño…)</Label>
+        <Input
+          id={`${prefix}-tipo`}
+          value={draft.option_name}
+          onChange={(e) => setDraft({ ...draft, option_name: e.target.value })}
+          className="tap mt-1"
+        />
+      </div>
+      <div>
+        <Label htmlFor={`${prefix}-valor`}>Opción (Rojo cereza, 30 ml…)</Label>
+        <Input
+          id={`${prefix}-valor`}
+          value={draft.option_value}
+          onChange={(e) => setDraft({ ...draft, option_value: e.target.value })}
+          className="tap mt-1"
+        />
+      </div>
+      <div>
+        <Label htmlFor={`${prefix}-precio`}>Diferencia de precio (MXN)</Label>
+        <Input
+          id={`${prefix}-precio`}
+          type="number"
+          value={draft.price_delta}
+          onChange={(e) => setDraft({ ...draft, price_delta: Number(e.target.value) })}
+          className="precio tap mt-1"
+        />
+      </div>
+      {variant ? null : (
+        <div>
+          <Label htmlFor={`${prefix}-stock`}>Piezas disponibles</Label>
+          <Input
+            id={`${prefix}-stock`}
+            type="number"
+            min={0}
+            value={draft.stock}
+            onChange={(e) => setDraft({ ...draft, stock: Math.max(0, Number(e.target.value)) })}
+            className="precio tap mt-1"
+          />
+        </div>
+      )}
+      <label className="flex items-center gap-2 text-sm sm:col-span-2">
+        <input
+          type="checkbox"
+          checked={draft.is_active}
+          onChange={(e) => setDraft({ ...draft, is_active: e.target.checked })}
+          className="h-4 w-4 accent-primary"
+        />
+        Visible en la tienda
+      </label>
+      <div className="flex gap-2 sm:col-span-2">
+        <Button size="sm" className="tap rounded-full" onClick={save} disabled={saving}>
+          {saving ? 'Guardando…' : 'Guardar variante'}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="tap rounded-full !bg-transparent hover:!bg-transparent"
+          onClick={() => onDone(false)}
+        >
+          Cancelar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** Categorías del catálogo: alta, edición y borrado. */
+function CategoriesSection({
+  categories,
+  toast,
+  onChanged,
+}: {
+  categories: CatalogCategory[];
+  toast: ToastFn;
+  onChanged: () => void;
+}) {
+  const blank: CatalogCategory = {
+    id: 0,
+    name: '',
+    slug: '',
+    description: '',
+    image_url: '',
+    sort_order: categories.length,
+    is_active: true,
+  };
+  const [editing, setEditing] = useState<CatalogCategory | null>(null);
+  const [working, setWorking] = useState(false);
+
+  const save = async () => {
+    if (!editing) return;
+    const slug = editing.slug || slugify(editing.name);
+    if (!editing.name.trim() || !slug) {
+      toast({ title: 'Escribe el nombre de la categoría.', variant: 'destructive' });
+      return;
+    }
+    setWorking(true);
+    try {
+      const payload = {
+        name: editing.name,
+        slug,
+        description: editing.description,
+        image_url: editing.image_url,
+        sort_order: editing.sort_order,
+        is_active: editing.is_active,
+      };
+      if (editing.id === 0) {
+        await api('/api/v1/crm/categories', 'POST', payload);
+      } else {
+        await api(`/api/v1/crm/categories/${editing.id}`, 'PUT', payload);
+      }
+      toast({ title: 'Categoría guardada' });
+      setEditing(null);
+      onChanged();
+    } catch (e) {
+      toast({ title: apiError(e), variant: 'destructive' });
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const remove = async (category: CatalogCategory) => {
+    if (!window.confirm(`¿Eliminar la categoría «${category.name}»?`)) return;
+    setWorking(true);
+    try {
+      await api(`/api/v1/crm/categories/${category.id}`, 'DELETE');
+      toast({ title: 'Categoría eliminada' });
+      onChanged();
+    } catch (e) {
+      toast({ title: apiError(e), variant: 'destructive' });
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  return (
+    <section className="rounded-2xl border border-border bg-card p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-base">Categorías</h2>
+        <Button size="sm" className="tap rounded-full" onClick={() => setEditing(blank)}>
+          Nueva categoría
+        </Button>
+      </div>
+      {categories.length === 0 ? (
+        <p className="mt-2 text-sm text-muted-foreground">
+          Crea al menos una categoría (por ejemplo «Labios») antes de agregar productos.
+        </p>
+      ) : (
+        <ul className="mt-3 flex flex-wrap gap-2">
+          {categories.map((category) => (
+            <li key={category.id} className="flex items-center gap-1 rounded-full border border-border pl-3">
+              <span className="text-sm">
+                {category.name}
+                {category.is_active ? '' : ' (oculta)'}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs"
+                onClick={() => setEditing(category)}
+              >
+                Editar
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs text-destructive"
+                disabled={working}
+                onClick={() => remove(category)}
+              >
+                Eliminar
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {editing ? (
+        <div className="mt-3 grid gap-3 rounded-xl border border-primary/40 p-3 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="c-nombre">Nombre</Label>
+            <Input
+              id="c-nombre"
+              value={editing.name}
+              onChange={(e) =>
+                setEditing({
+                  ...editing,
+                  name: e.target.value,
+                  slug:
+                    editing.id === 0 && editing.slug === slugify(editing.name)
+                      ? slugify(e.target.value)
+                      : editing.slug,
+                })
+              }
+              className="tap mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="c-desc">Descripción corta</Label>
+            <Input
+              id="c-desc"
+              value={editing.description}
+              onChange={(e) => setEditing({ ...editing, description: e.target.value })}
+              className="tap mt-1"
+            />
+          </div>
+          <PhotoField
+            id="c-foto"
+            label="Foto de la categoría"
+            value={editing.image_url}
+            toast={toast}
+            onChange={(url) => setEditing((current) => (current ? { ...current, image_url: url } : current))}
+          />
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={editing.is_active}
+              onChange={(e) => setEditing({ ...editing, is_active: e.target.checked })}
+              className="h-4 w-4 accent-primary"
+            />
+            Visible en la tienda
+          </label>
+          <div className="flex gap-2 sm:col-span-2">
+            <Button size="sm" className="tap rounded-full" onClick={save} disabled={working}>
+              Guardar categoría
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="tap rounded-full !bg-transparent hover:!bg-transparent"
+              onClick={() => setEditing(null)}
+            >
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function CatalogTab({ toast }: { toast: ToastFn }) {
   const [data, setData] = useState<CatalogResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<CatalogProduct | null>(null);
   const [working, setWorking] = useState(false);
   const [stockDrafts, setStockDrafts] = useState<Record<number, string>>({});
+  // Variante abierta en el formulario: variant null = nueva.
+  const [variantForm, setVariantForm] = useState<{ productId: number; variant: VariantRow | null } | null>(
+    null,
+  );
 
   const load = useCallback(() => {
     setLoading(true);
@@ -1393,7 +1699,7 @@ function CatalogTab({ toast }: { toast: ToastFn }) {
   const saveProduct = async () => {
     if (!editing) return;
     if (!editing.name.trim() || !editing.slug.trim() || editing.price <= 0) {
-      toast({ title: 'Nombre, slug y precio son obligatorios.', variant: 'destructive' });
+      toast({ title: 'Nombre, dirección (URL) y precio son obligatorios.', variant: 'destructive' });
       return;
     }
     setWorking(true);
@@ -1449,7 +1755,22 @@ function CatalogTab({ toast }: { toast: ToastFn }) {
     }
   };
 
+  const removeVariant = async (variant: VariantRow) => {
+    if (!window.confirm(`¿Eliminar la variante «${variant.label}»?`)) return;
+    setWorking(true);
+    try {
+      await api(`/api/v1/crm/variants/${variant.id}`, 'DELETE');
+      toast({ title: 'Variante eliminada' });
+      load();
+    } catch (e) {
+      toast({ title: apiError(e), variant: 'destructive' });
+    } finally {
+      setWorking(false);
+    }
+  };
+
   const removeProduct = async (product: CatalogProduct) => {
+    if (!window.confirm(`¿Eliminar «${product.name}»? Si sólo quieres ocultarlo, usa «Archivado».`)) return;
     setWorking(true);
     try {
       await api(`/api/v1/crm/products/${product.id}`, 'DELETE');
@@ -1490,6 +1811,8 @@ function CatalogTab({ toast }: { toast: ToastFn }) {
         </span>
       </div>
 
+      <CategoriesSection categories={data.categories} toast={toast} onChanged={load} />
+
       {editing ? (
         <section className="rounded-2xl border border-primary/40 bg-card p-4">
           <h2 className="text-base">{editing.id === 0 ? 'Nuevo producto' : `Editar: ${editing.name}`}</h2>
@@ -1499,12 +1822,22 @@ function CatalogTab({ toast }: { toast: ToastFn }) {
               <Input
                 id="p-nombre"
                 value={editing.name}
-                onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                onChange={(e) =>
+                  setEditing({
+                    ...editing,
+                    name: e.target.value,
+                    // En productos nuevos la URL sigue al nombre mientras no se edite a mano.
+                    slug:
+                      editing.id === 0 && editing.slug === slugify(editing.name)
+                        ? slugify(e.target.value)
+                        : editing.slug,
+                  })
+                }
                 className="tap mt-1"
               />
             </div>
             <div>
-              <Label htmlFor="p-slug">Slug (URL)</Label>
+              <Label htmlFor="p-slug">Dirección del producto (URL)</Label>
               <Input
                 id="p-slug"
                 value={editing.slug}
@@ -1707,12 +2040,52 @@ function CatalogTab({ toast }: { toast: ToastFn }) {
                   >
                     Ajustar
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs"
+                    onClick={() => setVariantForm({ productId: product.id, variant })}
+                  >
+                    Editar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs text-destructive"
+                    disabled={working}
+                    onClick={() => removeVariant(variant)}
+                  >
+                    Eliminar
+                  </Button>
                 </li>
               ))}
               {product.variants.length === 0 ? (
-                <li className="text-xs text-muted-foreground">Sin variantes registradas.</li>
+                <li className="text-xs font-medium text-amber-800">
+                  Agrega al menos una variante con piezas para que este producto se pueda apartar.
+                </li>
               ) : null}
             </ul>
+            {variantForm?.productId === product.id ? (
+              <VariantForm
+                key={variantForm.variant?.id ?? 'nueva'}
+                productId={product.id}
+                variant={variantForm.variant}
+                toast={toast}
+                onDone={(saved) => {
+                  setVariantForm(null);
+                  if (saved) load();
+                }}
+              />
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-2 rounded-full !bg-transparent text-xs hover:!bg-transparent"
+                onClick={() => setVariantForm({ productId: product.id, variant: null })}
+              >
+                Agregar variante
+              </Button>
+            )}
           </section>
         ))}
       </div>
@@ -1721,6 +2094,163 @@ function CatalogTab({ toast }: { toast: ToastFn }) {
 }
 
 /* -------------------------- Configuración ------------------------ */
+type DeliverySlot = DeliveryConfig['slots'][number];
+
+/** Horarios de un punto de entrega: alta, pausa y borrado. */
+function SlotsEditor({
+  pointId,
+  slots,
+  toast,
+  onChanged,
+}: {
+  pointId: number;
+  slots: DeliverySlot[];
+  toast: ToastFn;
+  onChanged: () => void;
+}) {
+  const [draft, setDraft] = useState({ weekday: 0, start_time: '10:00', end_time: '12:00', capacity: 0 });
+  const [working, setWorking] = useState(false);
+
+  const run = async (action: () => Promise<unknown>, message: string) => {
+    setWorking(true);
+    try {
+      await action();
+      toast({ title: message });
+      onChanged();
+    } catch (e) {
+      toast({ title: apiError(e), variant: 'destructive' });
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const slotPayload = (slot: DeliverySlot, is_active: boolean) => ({
+    delivery_point_id: slot.delivery_point_id,
+    weekday: slot.weekday,
+    start_time: slot.start_time,
+    end_time: slot.end_time,
+    capacity: slot.capacity,
+    is_active,
+  });
+
+  return (
+    <div className="mt-3">
+      <p className="text-sm font-medium">Horarios</p>
+      {slots.length === 0 ? (
+        <p className="text-xs text-amber-800">Sin horarios: las clientas no podrán elegir este punto.</p>
+      ) : (
+        <ul className="mt-1 space-y-1">
+          {slots.map((slot) => (
+            <li key={slot.id} className="flex flex-wrap items-center gap-2 text-sm">
+              <span className={`precio min-w-0 flex-1 ${slot.is_active ? '' : 'text-muted-foreground line-through'}`}>
+                {WEEKDAY_NAMES[slot.weekday]} {slot.start_time}–{slot.end_time}
+                {slot.capacity > 0 ? ` · cupo ${slot.capacity}` : ' · sin límite'}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs"
+                disabled={working}
+                onClick={() =>
+                  run(
+                    () => api(`/api/v1/crm/delivery-slots/${slot.id}`, 'PUT', slotPayload(slot, !slot.is_active)),
+                    slot.is_active ? 'Horario pausado' : 'Horario activado',
+                  )
+                }
+              >
+                {slot.is_active ? 'Pausar' : 'Activar'}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs text-destructive"
+                disabled={working}
+                onClick={() => {
+                  if (!window.confirm('¿Eliminar este horario?')) return;
+                  void run(() => api(`/api/v1/crm/delivery-slots/${slot.id}`, 'DELETE'), 'Horario eliminado');
+                }}
+              >
+                Eliminar
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <div className="col-span-2 sm:col-span-1">
+          <Label htmlFor={`slot-dia-${pointId}`}>Día</Label>
+          <Select
+            value={String(draft.weekday)}
+            onValueChange={(value) => setDraft({ ...draft, weekday: Number(value) })}
+          >
+            <SelectTrigger id={`slot-dia-${pointId}`} className="tap mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {WEEKDAY_NAMES.map((day, index) => (
+                <SelectItem key={day} value={String(index)}>
+                  {day}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor={`slot-inicio-${pointId}`}>Desde</Label>
+          <Input
+            id={`slot-inicio-${pointId}`}
+            type="time"
+            value={draft.start_time}
+            onChange={(e) => setDraft({ ...draft, start_time: e.target.value })}
+            className="precio tap mt-1"
+          />
+        </div>
+        <div>
+          <Label htmlFor={`slot-fin-${pointId}`}>Hasta</Label>
+          <Input
+            id={`slot-fin-${pointId}`}
+            type="time"
+            value={draft.end_time}
+            onChange={(e) => setDraft({ ...draft, end_time: e.target.value })}
+            className="precio tap mt-1"
+          />
+        </div>
+        <div>
+          <Label htmlFor={`slot-cupo-${pointId}`}>Cupo (0 = sin límite)</Label>
+          <Input
+            id={`slot-cupo-${pointId}`}
+            type="number"
+            min={0}
+            value={draft.capacity}
+            onChange={(e) => setDraft({ ...draft, capacity: Math.max(0, Number(e.target.value)) })}
+            className="precio tap mt-1"
+          />
+        </div>
+        <div className="flex items-end">
+          <Button
+            size="sm"
+            className="tap w-full rounded-full"
+            disabled={working}
+            onClick={() =>
+              run(
+                () =>
+                  api('/api/v1/crm/delivery-slots', 'POST', {
+                    ...draft,
+                    delivery_point_id: pointId,
+                    is_active: true,
+                  }),
+                'Horario agregado',
+              )
+            }
+          >
+            Agregar horario
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SettingsTab({ toast }: { toast: ToastFn }) {
   const [data, setData] = useState<SettingsResponse | null>(null);
   const [delivery, setDelivery] = useState<DeliveryConfig | null>(null);
@@ -1771,8 +2301,43 @@ function SettingsTab({ toast }: { toast: ToastFn }) {
   const savePoint = async (point: DeliveryConfig['points'][number]) => {
     setWorking(true);
     try {
-      await api(`/api/v1/crm/delivery-points/${point.id}`, 'PUT', point);
+      // El backend rechaza campos extra: el id va en la URL, no en el cuerpo.
+      const { id, ...fields } = point;
+      await api(`/api/v1/crm/delivery-points/${id}`, 'PUT', fields);
       toast({ title: 'Punto de entrega actualizado' });
+      load();
+    } catch (e) {
+      toast({ title: apiError(e), variant: 'destructive' });
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const addPoint = async () => {
+    setWorking(true);
+    try {
+      await api('/api/v1/crm/delivery-points', 'POST', {
+        name: 'Nuevo punto de entrega',
+        kind: 'metro',
+        city: 'Ciudad de México',
+        sort_order: delivery?.points.length ?? 0,
+        is_active: false,
+      });
+      toast({ title: 'Punto agregado. Complétalo y actívalo.' });
+      load();
+    } catch (e) {
+      toast({ title: apiError(e), variant: 'destructive' });
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const removePoint = async (point: DeliveryConfig['points'][number]) => {
+    if (!window.confirm(`¿Eliminar «${point.name}» y sus horarios?`)) return;
+    setWorking(true);
+    try {
+      await api(`/api/v1/crm/delivery-points/${point.id}`, 'DELETE');
+      toast({ title: 'Punto eliminado' });
       load();
     } catch (e) {
       toast({ title: apiError(e), variant: 'destructive' });
@@ -2014,31 +2579,33 @@ function SettingsTab({ toast }: { toast: ToastFn }) {
                   />
                   Activo para nuevas reservaciones
                 </label>
-                <p className="precio mt-2 text-xs text-muted-foreground">
-                  Horarios:{' '}
-                  {slots.length === 0
-                    ? 'sin horarios'
-                    : slots
-                        .map(
-                          (s) =>
-                            `${WEEKDAY_NAMES[s.weekday]} ${s.start_time}–${s.end_time}${
-                              s.capacity > 0 ? ` (${s.capacity})` : ''
-                            }`,
-                        )
-                        .join(' · ')}
-                </p>
-                <Button
-                  size="sm"
-                  className="tap mt-2 rounded-full"
-                  onClick={() => savePoint(point)}
-                  disabled={working}
-                >
-                  Guardar punto
-                </Button>
+                <div className="mt-2 flex gap-2">
+                  <Button
+                    size="sm"
+                    className="tap rounded-full"
+                    onClick={() => savePoint(point)}
+                    disabled={working}
+                  >
+                    Guardar punto
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs text-destructive"
+                    onClick={() => removePoint(point)}
+                    disabled={working}
+                  >
+                    Eliminar punto
+                  </Button>
+                </div>
+                <SlotsEditor pointId={point.id} slots={slots} toast={toast} onChanged={load} />
               </div>
             );
           })}
         </div>
+        <Button className="tap mt-4 rounded-full" onClick={addPoint} disabled={working}>
+          Agregar punto de entrega
+        </Button>
       </section>
     </div>
   );

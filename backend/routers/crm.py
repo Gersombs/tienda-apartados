@@ -12,7 +12,7 @@ from datetime import timedelta
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -109,7 +109,8 @@ class VariantPayload(AdminInput):
     option_name: Optional[str] = "Presentación"
     option_value: str
     sku: Optional[str] = ""
-    stock: int = 0
+    # Al editar, None conserva el stock actual: el inventario se cambia con /stock-adjust.
+    stock: Optional[int] = None
     price_delta: float = 0
     is_active: bool = True
 
@@ -140,11 +141,15 @@ class PointPayload(AdminInput):
     is_active: bool = True
 
 
+HHMM_PATTERN = r"^([01]\d|2[0-3]):[0-5]\d$"
+
+
 class SlotPayload(AdminInput):
     delivery_point_id: int
     weekday: int
-    start_time: str
-    end_time: str
+    # HH:MM con cero inicial, para que comparar texto sea comparar horas.
+    start_time: str = Field(pattern=HHMM_PATTERN)
+    end_time: str = Field(pattern=HHMM_PATTERN)
     capacity: int = 0
     is_active: bool = True
 
@@ -1040,7 +1045,7 @@ async def create_variant(
         option_name=sanitize_text(data.option_name, 60) or "Presentación",
         option_value=sanitize_text(data.option_value, 80),
         sku=sanitize_text(data.sku, 60),
-        stock=max(0, int(data.stock)),
+        stock=max(0, int(data.stock or 0)),
         reserved_stock=0,
         price_delta=money(data.price_delta),
         is_active=data.is_active,
@@ -1075,7 +1080,7 @@ async def update_variant(
     if variant is None:
         raise HTTPException(status_code=404, detail="Variante no encontrada")
 
-    new_stock = max(0, int(data.stock))
+    new_stock = int(variant.stock or 0) if data.stock is None else max(0, int(data.stock))
     delta = new_stock - int(variant.stock or 0)
     variant.option_name = sanitize_text(data.option_name, 60) or "Presentación"
     variant.option_value = sanitize_text(data.option_value, 80)
