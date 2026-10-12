@@ -1,0 +1,13 @@
+.git
+.venv
+.tools
+.mgx
+.pnpm-store
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+frontend/dist
+backend/logs
+*.db
+.env
+frontend/.env

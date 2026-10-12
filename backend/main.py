@@ -22,6 +22,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from core.config import settings
 from core.reservation_limits import MAX_RESERVATION_BODY_BYTES
 from dependencies.auth import get_current_admin_account, require_csrf
+from frontend import serve_frontend
 from routers.auth import router as auth_router
 from routers.crm import router as crm_router
 from routers.shop import router as shop_router
@@ -201,7 +202,7 @@ async def security_headers(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = (
         "no-referrer"
-        if request.url.path == "/api/v1/shop/confirmation" or private_token_response
+        if request.url.path in {"/api/v1/shop/confirmation", "/confirmacion"} or private_token_response
         else "strict-origin-when-cross-origin"
     )
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
@@ -238,6 +239,12 @@ async def general_exception_handler(_request: Request, exc: Exception):
 @app.get("/health", include_in_schema=False)
 def health_check():
     return {"status": "ok"}
+
+
+# Registrada al final: todo lo que no es API ni /health es la SPA o un archivo del build.
+@app.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
+def spa(path: str):
+    return serve_frontend(f"/{path}")
 
 
 if __name__ == "__main__":

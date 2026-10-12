@@ -11,10 +11,10 @@ from pathlib import Path
 
 import pytest
 
-import lambda_handler as lambda_handler_module
+import frontend as frontend_module
 import routers.crm as crm_router
 from core.auth import private_token_hash
-from lambda_handler import _content_type, _serve_frontend
+from frontend import _content_type
 from services import mailer
 from services.mailer import confirmation_link
 
@@ -28,24 +28,38 @@ def test_static_webp_mime_is_platform_independent():
     assert _content_type(Path("product.webp")) == "image/webp"
 
 
-def test_lambda_html_denies_framing_without_applying_a_broad_asset_csp(
-    tmp_path, monkeypatch
+def test_spa_html_denies_framing_without_applying_a_broad_asset_csp(
+    client, tmp_path, monkeypatch
 ):
     dist = tmp_path / "dist"
     assets = dist / "assets"
     assets.mkdir(parents=True)
     (dist / "index.html").write_text("<!doctype html><title>Nébula</title>", encoding="utf-8")
     (assets / "app.js").write_text("console.log('ok')", encoding="utf-8")
-    monkeypatch.setattr(lambda_handler_module, "DIST_DIR", dist)
+    monkeypatch.setattr(frontend_module, "DIST_DIR", dist.resolve())
 
-    document = _serve_frontend("/", "GET")
-    asset = _serve_frontend("/assets/app.js", "GET")
+    document = client.get("/")
+    deep_link = client.get("/producto/labial-mate")
+    confirmation = client.get("/confirmacion")
+    asset = client.get("/assets/app.js")
+    missing_asset = client.get("/assets/missing.js")
+    traversal = client.get("/assets/..%2F..%2Fmain.py")
+    unknown_api = client.get("/api/unknown")
 
-    assert document["statusCode"] == 200
-    assert document["headers"]["Content-Security-Policy"] == "frame-ancestors 'none'"
-    assert document["headers"]["X-Frame-Options"] == "DENY"
-    assert "Content-Security-Policy" not in asset["headers"]
-    assert "X-Frame-Options" not in asset["headers"]
+    assert document.status_code == 200
+    assert document.headers["Content-Security-Policy"] == "frame-ancestors 'none'"
+    assert document.headers["X-Frame-Options"] == "DENY"
+    assert deep_link.status_code == 200 and "Nébula" in deep_link.text
+    assert confirmation.headers["Cache-Control"] == "no-store"
+    assert confirmation.headers["Referrer-Policy"] == "no-referrer"
+    assert asset.status_code == 200
+    assert asset.headers["Cache-Control"] == "public, max-age=31536000, immutable"
+    assert "Content-Security-Policy" not in asset.headers
+    assert "X-Frame-Options" not in asset.headers
+    assert missing_asset.status_code == 404
+    assert traversal.status_code == 404
+    assert unknown_api.status_code == 404
+    assert client.get("/health").json() == {"status": "ok"}
 
 
 def _product_id() -> int:

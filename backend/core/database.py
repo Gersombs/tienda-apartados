@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import time
 from typing import Any
 
@@ -21,7 +20,6 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
 )
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.pool import NullPool
 
 
 logger = logging.getLogger(__name__)
@@ -44,25 +42,14 @@ class DatabaseManager:
         if target.url.startswith("sqlite") or target.transaction_pooler:
             return options
 
-        is_lambda = os.environ.get("IS_LAMBDA", "").lower() in {"true", "1", "yes"}
-        if is_lambda and os.environ.get("DB_DISABLE_POOL", "").lower() in {"true", "1", "yes"}:
-            options["poolclass"] = NullPool
-        elif is_lambda:
-            options.update(
-                pool_pre_ping=True,
-                pool_size=int(os.environ.get("DB_POOL_SIZE", "1")),
-                max_overflow=int(os.environ.get("DB_MAX_OVERFLOW", "2")),
-                pool_recycle=int(os.environ.get("DB_POOL_RECYCLE", "280")),
-            )
-        else:
-            options.update(
-                pool_pre_ping=True,
-                pool_size=10,
-                max_overflow=20,
-                pool_recycle=3600,
-                pool_timeout=30,
-            )
-
+        # Un solo contenedor por tienda: pocas conexiones bastan y caben en planes gratuitos.
+        options.update(
+            pool_pre_ping=True,
+            pool_size=5,
+            max_overflow=5,
+            pool_recycle=300,
+            pool_timeout=30,
+        )
         return options
 
     async def _initialize(self) -> None:
