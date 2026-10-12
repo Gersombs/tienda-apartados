@@ -20,7 +20,6 @@ La misma allowlist se aplica en tiempo de ejecución: fuera de estas rutas públ
 | `POST /api/v1/shop/confirmation/cancel` | Token privado en cuerpo JSON | La clienta cancela su apartado activo; libera piezas, lo marca como no leído en el CRM y no envía correos |
 | `GET /api/v1/shop/content` | Público, sólo lectura | Políticas e instrucciones públicas de la tienda |
 | `GET /api/v1/crm/session` | Administrador | Estado de sesión del panel |
-| `GET /api/v1/crm/admins` | Administrador | Administradores sin credenciales/hashes |
 | `GET /api/v1/crm/dashboard` | Administrador | Métricas internas |
 | `GET /api/v1/crm/reservations` | Administrador | Listado interno de reservaciones |
 | `GET /api/v1/crm/reservations/{reservation_id}` | Administrador | Detalle, historial y notificaciones |
@@ -31,7 +30,6 @@ La misma allowlist se aplica en tiempo de ejecución: fuera de estas rutas públ
 | `POST /api/v1/crm/reservations/{reservation_id}/rotate-confirmation-token` | Administrador + CSRF | Invalida el enlace anterior, genera y envía uno nuevo; si el proveedor falla devuelve el enlace temporal para recuperación manual |
 | `POST /api/v1/crm/reservations/{reservation_id}/revoke-confirmation-token` | Administrador + CSRF | Revoca explícitamente el enlace privado actual |
 | `GET /api/v1/crm/reservations-export` | Administrador | Exportación CSV |
-| `GET /api/v1/crm/failed-emails` | Administrador | Notificaciones fallidas o pendientes |
 | `GET /api/v1/crm/catalog` | Administrador | Catálogo interno con stock |
 | `POST /api/v1/crm/products` | Administrador + CSRF | Crea producto |
 | `PUT /api/v1/crm/products/{product_id}` | Administrador + CSRF | Edita producto |
@@ -40,7 +38,6 @@ La misma allowlist se aplica en tiempo de ejecución: fuera de estas rutas públ
 | `PUT /api/v1/crm/variants/{variant_id}` | Administrador + CSRF | Edita variante |
 | `DELETE /api/v1/crm/variants/{variant_id}` | Administrador + CSRF | Elimina variante permitida |
 | `POST /api/v1/crm/stock-adjust` | Administrador + CSRF | Ajusta stock y registra movimiento |
-| `GET /api/v1/crm/inventory-movements` | Administrador | Historial de inventario |
 | `POST /api/v1/crm/categories` | Administrador + CSRF | Crea categoría |
 | `PUT /api/v1/crm/categories/{category_id}` | Administrador + CSRF | Edita categoría |
 | `DELETE /api/v1/crm/categories/{category_id}` | Administrador + CSRF | Elimina categoría permitida |
@@ -54,6 +51,5 @@ La misma allowlist se aplica en tiempo de ejecución: fuera de estas rutas públ
 | `GET /api/v1/crm/settings` | Administrador | Configuración pública y privada, incluida CLABE |
 | `PUT /api/v1/crm/settings/store` | Administrador + CSRF | Edita configuración pública |
 | `PUT /api/v1/crm/settings/private` | Administrador + CSRF | Edita banco, CLABE y destinatarios |
-| `GET /api/v1/crm/customers` | Administrador | Lista clientes y datos personales |
 
 Las dependencias administrativas y CSRF se agregan al router CRM completo en `main.py`; no dependen de que cada función recuerde declararlas. La lista pública comprobable vive en `main.PUBLIC_ENDPOINTS` y una prueba compara esa allowlist con las rutas reales.

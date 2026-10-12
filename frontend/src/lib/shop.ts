@@ -542,18 +542,3 @@ export function setProductJsonLd(product: ProductDetail | null) {
   });
   document.head.appendChild(script);
 }
-
-export function fingerprint(): string {
-  const key = 'nebula.fingerprint';
-  let value: string;
-  try {
-    value = localStorage.getItem(key) || '';
-    if (!value) {
-      value = Math.random().toString(36).slice(2) + Date.now().toString(36);
-      localStorage.setItem(key, value);
-    }
-  } catch {
-    value = Date.now().toString(36);
-  }
-  return value;
-}

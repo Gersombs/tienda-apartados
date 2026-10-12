@@ -21,7 +21,6 @@ import {
   cart,
   cartTotals,
   fechaLarga,
-  fingerprint,
   pesos,
   setSeo,
   SHOP_NAME_FALLBACK,
@@ -275,7 +274,6 @@ export default function Apartado() {
         slot_start: slotStart,
         notes: form.notes.trim(),
         privacy_accepted: form.privacy_accepted,
-        fingerprint: fingerprint(),
         items: lines.map((l) => ({ variant_id: l.variantId, quantity: l.quantity })),
       });
       cart.clear();

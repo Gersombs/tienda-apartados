@@ -318,7 +318,6 @@ async def submit_reservation(
                 "slot_start": data.slot_start,
                 "notes": data.notes,
                 "privacy_accepted": data.privacy_accepted,
-                "fingerprint": data.fingerprint,
                 "items": [{"variant_id": i.variant_id, "quantity": i.quantity} for i in data.items],
             },
         )

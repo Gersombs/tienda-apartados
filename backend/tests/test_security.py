@@ -71,9 +71,7 @@ def test_no_http_method_can_create_or_escalate_an_admin(client):
         headers={"X-CSRF-Token": csrf},
     )
     assert response.status_code == 405
-    admins = client.get("/api/v1/crm/admins")
-    assert admins.status_code == 200
-    assert all(item["role"] == "owner" for item in admins.json()["items"])
+    assert not any(path.startswith("/api/v1/crm/admins") for _method, path in _openapi_operations())
 
 
 def test_every_admin_route_rejects_anonymous_before_dispatch(client):
@@ -393,7 +391,7 @@ def test_admin_responses_never_return_password_hashes(client):
     )
     assert login_response.status_code == 200
     assert "csrf" not in login_response.text.lower()
-    response = client.get("/api/v1/crm/admins")
+    response = client.get("/api/v1/crm/session")
     assert response.status_code == 200
     assert "password" not in response.text.lower()
     assert "hash" not in response.text.lower()

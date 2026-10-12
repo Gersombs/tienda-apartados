@@ -24,10 +24,8 @@ from core.csv_security import sanitize_csv_text
 from dependencies.auth import get_current_admin_account, get_current_user
 from models.admin_accounts import Admin_accounts
 from models.categories import Categories
-from models.customers import Customers
 from models.delivery_points import Delivery_points
 from models.delivery_slots import Delivery_slots
-from models.inventory_movements import Inventory_movements
 from models.private_settings import Private_settings
 from models.product_images import Product_images
 from models.product_variants import Product_variants
@@ -211,25 +209,6 @@ async def session_state(
         "admin_count": total,
         "role": admin.role if admin else "",
         "name": (admin.name if admin else "") or current_user.name or "",
-    }
-
-
-@router.get("/admins")
-async def list_admins(
-    admin: Admin_accounts = Depends(get_admin), db: AsyncSession = Depends(get_db)
-) -> Dict[str, Any]:
-    result = await db.execute(select(Admin_accounts).order_by(Admin_accounts.id))
-    return {
-        "items": [
-            {
-                "id": a.id,
-                "email": a.email or "",
-                "name": a.name or "",
-                "role": a.role or "staff",
-                "is_active": a.is_active is not False,
-            }
-            for a in result.scalars().all()
-        ]
     }
 
 
@@ -752,45 +731,6 @@ async def export_reservations(
     )
 
 
-@router.get("/failed-emails")
-async def failed_emails(
-    admin: Admin_accounts = Depends(get_admin), db: AsyncSession = Depends(get_db)
-) -> Dict[str, Any]:
-    """Correos fallidos o pendientes para que el administrador pueda reenviarlos."""
-    from models.notifications import Notifications
-
-    result = await db.execute(
-        select(Notifications)
-        .where(Notifications.status.in_(["fallido", "pendiente"]))
-        .order_by(Notifications.id.desc())
-        .limit(50)
-    )
-    notifications = list(result.scalars().all())
-    reservation_ids = {n.reservation_id for n in notifications if n.reservation_id}
-    folios: Dict[int, str] = {}
-    if reservation_ids:
-        folio_result = await db.execute(
-            select(Reservations.id, Reservations.folio).where(Reservations.id.in_(reservation_ids))
-        )
-        folios = {row[0]: row[1] for row in folio_result.all()}
-    return {
-        "items": [
-            {
-                "id": n.id,
-                "reservation_id": n.reservation_id,
-                "folio": folios.get(n.reservation_id, ""),
-                "recipient_type": n.recipient_type,
-                "recipient_email": n.recipient_email or "",
-                "template": n.template,
-                "status": n.status,
-                "error_message": n.error_message or "",
-                "attempts": int(n.attempts or 0),
-            }
-            for n in notifications
-        ]
-    }
-
-
 # --------------------------------------------------------------------------- #
 # Fotos
 # --------------------------------------------------------------------------- #
@@ -1204,40 +1144,6 @@ async def adjust_stock(
     return {"id": variant.id, "stock": variant.stock, "available_units": available_units(variant)}
 
 
-@router.get("/inventory-movements")
-async def inventory_movements(
-    variant_id: int = 0,
-    admin: Admin_accounts = Depends(get_admin),
-    db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
-    query = select(Inventory_movements).order_by(Inventory_movements.id.desc()).limit(60)
-    if variant_id:
-        query = (
-            select(Inventory_movements)
-            .where(Inventory_movements.variant_id == variant_id)
-            .order_by(Inventory_movements.id.desc())
-            .limit(60)
-        )
-    result = await db.execute(query)
-    return {
-        "items": [
-            {
-                "id": m.id,
-                "variant_id": m.variant_id,
-                "product_id": m.product_id,
-                "reservation_id": m.reservation_id,
-                "movement_type": m.movement_type,
-                "quantity": int(m.quantity or 0),
-                "stock_after": m.stock_after,
-                "reserved_after": m.reserved_after,
-                "note": m.note or "",
-                "created_at": m.created_at.isoformat() if m.created_at else None,
-            }
-            for m in result.scalars().all()
-        ]
-    }
-
-
 @router.post("/categories")
 async def create_category(
     data: CategoryPayload,
@@ -1579,29 +1485,3 @@ async def update_private_settings(
     private.notification_from_name = sanitize_text(data.notification_from_name, 120)
     await db.commit()
     return {"saved": True}
-
-
-@router.get("/customers")
-async def list_customers(
-    search: str = "",
-    admin: Admin_accounts = Depends(get_admin),
-    db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
-    result = await db.execute(select(Customers).order_by(Customers.id.desc()).limit(200))
-    needle = (search or "").strip().lower()
-    items = []
-    for c in result.scalars().all():
-        haystack = f"{c.full_name or ''} {c.whatsapp or ''} {c.email or ''}".lower()
-        if needle and needle not in haystack:
-            continue
-        items.append(
-            {
-                "id": c.id,
-                "full_name": c.full_name or "",
-                "whatsapp": c.whatsapp or "",
-                "email": c.email or "",
-                "reservation_count": int(c.reservation_count or 0),
-                "delivered_count": int(c.delivered_count or 0),
-            }
-        )
-    return {"items": items, "total": len(items)}

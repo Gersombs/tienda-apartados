@@ -836,7 +836,7 @@ async def _unique_folio(db: AsyncSession, moment: datetime) -> str:
 
 
 async def _guard_duplicate(db: AsyncSession, email: str) -> None:
-    """Evita reenvíos accidentales usando datos persistidos, no el fingerprint."""
+    """Evita reenvíos accidentales con el correo de la clienta."""
     threshold = utc_now() - timedelta(seconds=90)
     result = await db.execute(
         select(Reservations)
@@ -1040,7 +1040,6 @@ async def _create_reservation_locked(db: AsyncSession, payload: Dict[str, Any]) 
             config["grace_period_hours"],
         ),
         stock_released=False,
-        client_fingerprint=sanitize_text(payload.get("fingerprint"), 80),
     )
     db.add(reservation)
     await db.flush()
