@@ -48,6 +48,25 @@ Remove-Item Env:ALLOW_LEGACY_TOKEN_INVALIDATION
 
 Las reservaciones se conservan, los enlaces antiguos quedan revocados y sólo permanecen hashes SHA-256. `20260825_02` reemplaza únicamente las URLs heredadas conocidas por activos WebP incluidos en `/images`; puede ejecutarse más de una vez sin alterar otros valores.
 
+## Desplegar una tienda piloto (Railway + Neon + Resend)
+
+Cada tienda es una instalación propia: su servicio en Railway, su base PostgreSQL y su URL. Todas comparten este repositorio, el `Dockerfile` y un único dominio de correo verificado del operador.
+
+1. **Base de datos:** crea un proyecto en Neon y copia la cadena de conexión.
+2. **Servicio:** en Railway crea un servicio desde este repositorio; detecta el `Dockerfile`. Genera su dominio público (por ejemplo `https://luna.up.railway.app`) o conecta uno propio.
+3. **Variables** del servicio (Railway también las pasa al build como `ARG`):
+   - `DATABASE_URL` = la cadena de Neon.
+   - `AUTH_SECRET` = 32+ caracteres aleatorios, distinto por tienda (`python -c "import secrets; print(secrets.token_urlsafe(32))"`).
+   - `PUBLIC_SITE_URL`, `ALLOWED_ORIGINS` y `VITE_PUBLIC_SITE_URL` = la misma URL HTTPS de la tienda, sin `/` final.
+   - `RESEND_API_KEY` y `EMAIL_FROM_ADDRESS` = tu clave y un remitente de tu dominio verificado en Resend (por ejemplo `avisos@tudominio.com`). Cada tienda sólo elige el nombre visible; las respuestas de las clientas llegan al correo de contacto de la tienda.
+4. **Desplegar.** El contenedor aplica las migraciones al arrancar (una sola instancia por tienda).
+5. **Crear la tienda** desde la consola del servicio (`railway ssh` o la consola web):
+   `python -m cli nueva-tienda --nombre "Luna Cosméticos" --email luna@correo.com --whatsapp 5512345678`
+   Crea la configuración con los textos base adaptados al nombre, sin catálogo ni puntos, y la cuenta de la administradora (pide la contraseña, mínimo 12 caracteres).
+6. La emprendedora entra a `/admin` y, en este orden: identidad y logotipo → categorías → productos con fotos y variantes → puntos de entrega y horarios → datos bancarios.
+
+El sitemap usa rutas de categoría de demostración (`vite.config.ts`); ajústalas por tienda si se personaliza el frontend.
+
 ## Inicialización de producción
 
 El orden operativo es deliberado:
@@ -63,11 +82,11 @@ El orden operativo es deliberado:
 
 ## Arquitectura same-origin
 
-La arquitectura oficial sirve el build de la SPA y las rutas `/api` bajo el mismo dominio mediante `backend/lambda_handler.py`. En producción `VITE_API_BASE_URL` debe permanecer vacío: las llamadas del navegador usan rutas relativas. El build falla si se configura una base de API no vacía o si se detectan orígenes distintos. El backend también se niega a iniciar si `PUBLIC_SITE_URL` y el único `ALLOWED_ORIGINS` no son exactamente el mismo origen público HTTPS canónico. Backend y frontend restringen los orígenes de producción a nombres DNS y rechazan cualquier IP literal, además de rutas, credenciales, query, fragmentos, puerto `443` explícito y `/` final.
+La arquitectura oficial sirve el build de la SPA y las rutas `/api` bajo el mismo dominio: FastAPI sirve `frontend/dist` mediante `backend/frontend.py`. En producción `VITE_API_BASE_URL` debe permanecer vacío: las llamadas del navegador usan rutas relativas. El build falla si se configura una base de API no vacía o si se detectan orígenes distintos. El backend también se niega a iniciar si `PUBLIC_SITE_URL` y el único `ALLOWED_ORIGINS` no son exactamente el mismo origen público HTTPS canónico. Backend y frontend restringen los orígenes de producción a nombres DNS y rechazan cualquier IP literal, además de rutas, credenciales, query, fragmentos, puerto `443` explícito y `/` final.
 
 El release debe inyectar el mismo valor fuente en `VITE_PUBLIC_SITE_URL`, `PUBLIC_SITE_URL` y `ALLOWED_ORIGINS`. Cuando las dos variables backend están disponibles durante el build, Vite valida explícitamente las tres y exige igualdad exacta; si el proveedor separa build y runtime, Vite sólo puede validar `VITE_PUBLIC_SITE_URL` y el arranque backend valida las otras dos, por lo que la igualdad cross-stack debe comprobarse en la configuración del release y no se infiere automáticamente. Esto es obligatorio mientras el frontend lea `nebula_csrf` desde `document.cookie`: la cookie CSRF es host-only y legible por JavaScript; la cookie de sesión sigue siendo host-only, `HttpOnly`, `Secure` en producción y `SameSite=Lax`. Ninguna cookie define `Domain`.
 
-Los documentos HTML servidos por Lambda incluyen `Content-Security-Policy: frame-ancestors 'none'` y `X-Frame-Options: DENY`. HSTS debe habilitarse en el edge HTTPS del dominio canónico, donde puede aplicarse únicamente después de verificar que todo el tráfico y los subdominios cubiertos usan TLS.
+Los documentos HTML de la SPA incluyen `Content-Security-Policy: frame-ancestors 'none'` y `X-Frame-Options: DENY`. HSTS debe habilitarse en el edge HTTPS del dominio canónico, donde puede aplicarse únicamente después de verificar que todo el tráfico y los subdominios cubiertos usan TLS.
 
 No se debe separar la SPA y la API en subdominios. Si esa arquitectura cambiara en el futuro, habría que reemplazar primero el mecanismo CSRF y volver a revisar CORS y cookies; ampliar `Domain` no es la solución aprobada.
 
