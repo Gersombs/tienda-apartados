@@ -19,6 +19,7 @@ import {
   setProductJsonLd,
   setSeo,
   whatsappLink,
+  SHOP_NAME_FALLBACK,
 } from '@/lib/shop';
 
 interface DetailResponse {
@@ -80,7 +81,7 @@ export default function Producto() {
   useEffect(() => {
     if (!product) return;
     setSeo({
-      title: `${product.name} — ${settings?.shop_name || 'Nébula Beauty MX'}`,
+      title: `${product.name} — ${settings?.shop_name || SHOP_NAME_FALLBACK}`,
       description: product.short_description,
       image: product.image_url,
     });

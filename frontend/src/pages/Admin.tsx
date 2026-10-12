@@ -361,6 +361,12 @@ export default function Admin() {
 function AdminPanel({ session }: { session: SessionState | null }) {
   const { toast } = useToast();
   const [tab, setTab] = useState('dashboard');
+  const [shopName, setShopName] = useState('');
+  useEffect(() => {
+    api<SettingsResponse>('/api/v1/crm/settings')
+      .then((s) => setShopName(String(s.store.shop_name || '')))
+      .catch(() => undefined);
+  }, []);
   const logout = async () => {
     try {
       await api('/api/v1/auth/logout', 'POST');
@@ -375,7 +381,7 @@ function AdminPanel({ session }: { session: SessionState | null }) {
         <div className="mx-auto flex w-full max-w-screen-xl items-center gap-3">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">CRM</p>
-            <h1 className="truncate text-lg">Nébula Beauty MX</h1>
+            <h1 className="truncate text-lg">{shopName}</h1>
           </div>
           <div className="ml-auto flex items-center gap-2">
             {session?.name ? (

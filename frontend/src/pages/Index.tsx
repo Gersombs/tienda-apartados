@@ -14,6 +14,7 @@ import {
   api,
   apiError,
   setSeo,
+  SHOP_NAME_FALLBACK,
 } from '@/lib/shop';
 
 interface Bootstrap {
@@ -62,7 +63,7 @@ export default function Index() {
   }, []);
 
   useEffect(() => {
-    const name = data?.settings.shop_name || 'Nébula Beauty MX';
+    const name = data?.settings.shop_name || SHOP_NAME_FALLBACK;
     setSeo({
       title: `${name} — Aparta cosméticos y recíbelos en el Metro o plazas de CDMX`,
       description:

@@ -12,14 +12,17 @@ import re
 import traceback
 from contextlib import asynccontextmanager
 from datetime import datetime
+from pathlib import PurePosixPath
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.body_limit import RequestBodyLimitMiddleware
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from core.config import settings
+from core.database import get_db
 from core.reservation_limits import MAX_RESERVATION_BODY_BYTES
 from dependencies.auth import get_current_admin_account, require_csrf
 from frontend import serve_frontend
@@ -29,6 +32,7 @@ from routers.shop import router as shop_router
 from services.database import close_database, initialize_database
 from services.migrations import upgrade_database
 from services.mock_data import initialize_mock_data
+from services.reservation_engine import get_store_settings
 
 
 SENSITIVE_LOG_PATTERN = re.compile(
@@ -244,8 +248,16 @@ def health_check():
 
 # Registrada al final: todo lo que no es API ni /health es la SPA o un archivo del build.
 @app.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
-def spa(path: str):
-    return serve_frontend(f"/{path}")
+async def spa(path: str, db: AsyncSession = Depends(get_db)):
+    shop_name = None
+    if not PurePosixPath(path).suffix or path.endswith((".html", ".webmanifest")):
+        try:
+            store = await get_store_settings(db)
+            shop_name = store.shop_name if store else None
+        except Exception:
+            # Sin base de datos la página sigue cargando con el nombre por defecto.
+            logging.getLogger(__name__).warning("Shop name unavailable for SPA shell", exc_info=True)
+    return serve_frontend(f"/{path}", shop_name)
 
 
 if __name__ == "__main__":

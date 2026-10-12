@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import os
 import sqlite3
 import subprocess
@@ -26,6 +27,25 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 
 def test_static_webp_mime_is_platform_independent():
     assert _content_type(Path("product.webp")) == "image/webp"
+
+
+def test_spa_shell_and_manifest_show_the_store_name(tmp_path, monkeypatch):
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    (dist / "index.html").write_text(
+        '<title>Nébula Beauty MX | Aparta</title><meta property="og:title" content="Nébula Beauty MX" />',
+        encoding="utf-8",
+    )
+    (dist / "site.webmanifest").write_text(
+        '{"name": "Nébula Beauty MX", "short_name": "Nébula Beauty"}', encoding="utf-8"
+    )
+    monkeypatch.setattr(frontend_module, "DIST_DIR", dist.resolve())
+
+    page = frontend_module.serve_frontend("/catalogo", 'Ana "<b>"').body.decode()
+    manifest = frontend_module.serve_frontend("/site.webmanifest", 'Ana "<b>"').body.decode()
+
+    assert "Nébula" not in page and 'content="Ana &quot;&lt;b&gt;&quot;"' in page
+    assert json.loads(manifest) == {"name": 'Ana "<b>"', "short_name": 'Ana "<b>"'}
 
 
 def test_spa_html_denies_framing_without_applying_a_broad_asset_csp(

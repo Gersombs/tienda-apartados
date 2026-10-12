@@ -9,6 +9,7 @@ import {
   cartTotals,
   pesos,
   whatsappLink,
+  SHOP_NAME_FALLBACK,
 } from '@/lib/shop';
 import { Button } from '@/components/ui/button';
 
@@ -147,7 +148,7 @@ export default function ShopLayout({ children, settings, hideCartBar = false }: 
     { to: '/apartado', label: 'Mi apartado', icon: ShoppingBag },
   ];
 
-  const shopName = settings?.shop_name || 'Nébula Beauty MX';
+  const shopName = settings?.shop_name || SHOP_NAME_FALLBACK;
   const showBar = !hideCartBar && count > 0;
 
   return (

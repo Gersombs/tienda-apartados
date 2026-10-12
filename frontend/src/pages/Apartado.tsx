@@ -23,6 +23,7 @@ import {
   fingerprint,
   pesos,
   setSeo,
+  SHOP_NAME_FALLBACK,
 } from '@/lib/shop';
 
 interface Bootstrap {
@@ -93,7 +94,7 @@ export default function Apartado() {
 
   useEffect(() => {
     setSeo({
-      title: `Mi apartado — ${settings?.shop_name || 'Nébula Beauty MX'}`,
+      title: `Mi apartado — ${settings?.shop_name || SHOP_NAME_FALLBACK}`,
       description:
         'Revisa tus productos apartados, elige punto de entrega, fecha y horario. Sin pago en línea.',
     });

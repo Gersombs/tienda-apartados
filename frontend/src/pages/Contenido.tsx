@@ -9,7 +9,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { AVISO_SIN_PAGO, StoreSettings, api, apiError, setSeo } from '@/lib/shop';
+import { AVISO_SIN_PAGO, SHOP_NAME_FALLBACK, StoreSettings, api, apiError, setSeo } from '@/lib/shop';
 
 export type ContentKey = 'how_it_works' | 'faq_content' | 'privacy_policy' | 'reservation_policy';
 
@@ -95,7 +95,7 @@ export default function Contenido({ contentKey }: { contentKey: ContentKey }) {
 
   useEffect(() => {
     setSeo({
-      title: `${meta.titulo} — ${content?.shop_name || settings?.shop_name || 'Nébula Beauty MX'}`,
+      title: `${meta.titulo} — ${content?.shop_name || settings?.shop_name || SHOP_NAME_FALLBACK}`,
       description: meta.seo,
     });
   }, [meta, content, settings]);

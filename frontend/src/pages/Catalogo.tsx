@@ -14,6 +14,7 @@ import {
   api,
   apiError,
   setSeo,
+  SHOP_NAME_FALLBACK,
 } from '@/lib/shop';
 
 interface Bootstrap {
@@ -132,7 +133,7 @@ export default function Catalogo() {
   }, [search, activeCategory, sort, availability, range]);
 
   useEffect(() => {
-    const shopName = settings?.shop_name || 'Nébula Beauty MX';
+    const shopName = settings?.shop_name || SHOP_NAME_FALLBACK;
     if (categoryInfo) {
       setSeo({
         title: `${categoryInfo.name} — ${shopName}`,

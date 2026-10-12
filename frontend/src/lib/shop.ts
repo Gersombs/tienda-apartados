@@ -1,5 +1,9 @@
 import { getAPIBaseURL } from './config';
 
+// El servidor escribe el nombre de cada tienda en el HTML; se usa mientras carga la configuración.
+export const SHOP_NAME_FALLBACK =
+  document.querySelector('meta[property="og:title"]')?.getAttribute('content') || '';
+
 /* ------------------------------------------------------------------ *
  * Tipos
  * ------------------------------------------------------------------ */

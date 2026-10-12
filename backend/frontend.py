@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import html
+import json
 import mimetypes
 from pathlib import Path, PurePosixPath
 
@@ -15,6 +17,21 @@ STATIC_MIME_TYPES = {
     ".avif": "image/avif",
     ".webp": "image/webp",
     ".woff2": "font/woff2",
+}
+DEFAULT_SHOP_NAME = "Nébula Beauty MX"
+
+
+def _json_text(value: str) -> str:
+    return json.dumps(value, ensure_ascii=False)[1:-1]
+
+
+# Archivos del build donde el nombre por defecto se sustituye por el de la tienda.
+BRANDED_FILES = {
+    "index.html": [(DEFAULT_SHOP_NAME, lambda name: html.escape(name, quote=True))],
+    "site.webmanifest": [
+        (f'"{DEFAULT_SHOP_NAME}"', lambda name: f'"{_json_text(name)}"'),
+        ('"Nébula Beauty"', lambda name: f'"{_json_text(name)}"'),
+    ],
 }
 
 
@@ -34,7 +51,7 @@ def _content_type(asset: Path) -> str:
     return STATIC_MIME_TYPES.get(asset.suffix.lower()) or mimetypes.guess_type(asset.name)[0] or "application/octet-stream"
 
 
-def serve_frontend(path: str) -> Response:
+def serve_frontend(path: str, shop_name: str | None = None) -> Response:
     if path.startswith("/api/"):
         return Response(status_code=404, content="Not found")
     if not DIST_DIR.is_dir():
@@ -73,4 +90,10 @@ def serve_frontend(path: str) -> Response:
                 "X-Robots-Tag": "noindex, nofollow, noarchive",
             }
         )
+    if shop_name and asset.name in BRANDED_FILES:
+        # El build trae el nombre por defecto; cada tienda muestra el suyo (título, vista previa al compartir, manifest).
+        branded = asset.read_text(encoding="utf-8")
+        for default, escape in BRANDED_FILES[asset.name]:
+            branded = branded.replace(default, escape(shop_name))
+        return Response(branded, media_type=content_type, headers=headers)
     return FileResponse(asset, media_type=content_type, headers=headers)

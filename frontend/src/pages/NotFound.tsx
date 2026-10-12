@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { setSeo } from '@/lib/shop';
+import { SHOP_NAME_FALLBACK, setSeo } from '@/lib/shop';
 
 export default function NotFound() {
   useEffect(() => {
     setSeo({
-      title: 'Página no encontrada — Nébula Beauty MX',
+      title: `Página no encontrada — ${SHOP_NAME_FALLBACK}`,
       description: 'La página que buscas no existe o cambió de dirección.',
       noindex: true,
     });
