@@ -11,6 +11,7 @@ import {
   whatsappLink,
   SHOP_NAME_FALLBACK,
 } from '@/lib/shop';
+import ProductPhoto from '@/components/ProductPhoto';
 import { Button } from '@/components/ui/button';
 
 interface Props {
@@ -73,11 +74,12 @@ function CartPanel({
         <ul className="space-y-3">
           {lines.map((line) => (
             <li key={line.variantId} className="flex gap-3 rounded-xl border border-border bg-background p-3">
-              <img
+              <ProductPhoto
                 src={line.imageUrl}
                 alt={line.name}
+                name={line.name}
                 loading="lazy"
-                className="h-16 w-16 flex-shrink-0 rounded-lg object-cover"
+                className="h-16 w-16 flex-shrink-0 rounded-lg object-cover text-xl"
               />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">{line.name}</p>

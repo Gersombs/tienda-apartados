@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, CalendarCheck, MapPin, Sparkles } from 'lucide-react';
 import ShopLayout from '@/components/ShopLayout';
 import ProductCardItem from '@/components/ProductCardItem';
+import ProductPhoto from '@/components/ProductPhoto';
 import TrustPoints from '@/components/TrustPoints';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -153,9 +154,10 @@ export default function Index() {
                 to={`/categoria/${category.slug}`}
                 className="group relative overflow-hidden rounded-2xl"
               >
-                <img
+                <ProductPhoto
                   src={category.image_url}
                   alt=""
+                  name={category.name}
                   loading="lazy"
                   className={`w-full object-cover transition-transform duration-500 group-hover:md:scale-105 ${
                     data.categories.length < 3 ? 'aspect-[4/3] sm:aspect-[2/1]' : 'aspect-[4/3]'

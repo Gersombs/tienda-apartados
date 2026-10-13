@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AlertTriangle, Check, ChevronLeft, Clock, MapPin, Trash2 } from 'lucide-react';
 import ShopLayout, { useCart } from '@/components/ShopLayout';
+import ProductPhoto from '@/components/ProductPhoto';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -247,6 +248,8 @@ export default function Apartado() {
   };
 
   const editar = () => {
+    // El aviso era sobre los datos de antes; al corregirlos ya no aplica.
+    setSubmitError('');
     setStep('entrega');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -364,11 +367,12 @@ export default function Apartado() {
             <ul className="mt-2 divide-y divide-border">
               {lines.map((line) => (
                 <li key={line.variantId} className="flex items-start gap-3 py-3">
-                  <img
+                  <ProductPhoto
                     src={line.imageUrl}
                     alt=""
+                    name={line.name}
                     loading="lazy"
-                    className="h-14 w-14 flex-shrink-0 rounded-lg bg-white object-cover"
+                    className="h-14 w-14 flex-shrink-0 rounded-lg bg-white object-cover text-xl"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold">{line.name}</p>
@@ -448,11 +452,12 @@ export default function Apartado() {
             {lines.map((line) => (
               <li key={line.variantId} className="flex items-start gap-3 py-3">
                 <Link to={`/producto/${line.slug}`} className="flex-shrink-0">
-                  <img
+                  <ProductPhoto
                     src={line.imageUrl}
                     alt={line.name}
+                    name={line.name}
                     loading="lazy"
-                    className="h-16 w-16 rounded-lg bg-white object-cover"
+                    className="h-16 w-16 rounded-lg bg-white object-cover text-xl"
                   />
                 </Link>
                 <div className="min-w-0 flex-1">

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ProductCard, pesos } from '@/lib/shop';
+import ProductPhoto from './ProductPhoto';
 
 const BADGE_STYLES: Record<string, string> = {
   Disponible: 'bg-secondary text-secondary-foreground',
@@ -16,9 +17,10 @@ export default function ProductCardItem({ product }: { product: ProductCard }) {
       className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-shadow hover:md:shadow-lg hover:md:shadow-foreground/10"
     >
       <div className="relative aspect-square overflow-hidden bg-white">
-        <img
+        <ProductPhoto
           src={product.image_url}
           alt={product.image_alt}
+          name={product.name}
           loading="lazy"
           width={512}
           height={512}

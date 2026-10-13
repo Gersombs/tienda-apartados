@@ -1,6 +1,6 @@
 # Nébula Beauty MX — candidato de publicación
 
-Catálogo y solicitudes de apartado sin cuentas de clienta ni pagos en línea. La API pública expone únicamente catálogo, disponibilidad, creación de apartados, contenido y confirmaciones privadas; el CRM usa sesión administrativa local, cookie `HttpOnly` y CSRF.
+Catálogo y solicitudes de apartado sin cuentas de clienta ni pagos en línea. La API pública expone únicamente configuración y textos de la tienda (`/bootstrap`), catálogo, disponibilidad, creación de apartados y confirmaciones privadas; el CRM usa sesión administrativa local, cookie `HttpOnly` y CSRF.
 
 ## Versiones y instalación reproducible
 
@@ -65,7 +65,7 @@ Cada tienda es una instalación propia: su servicio en Railway, su base PostgreS
    Crea la configuración con los textos base adaptados al nombre, sin catálogo ni puntos, y la cuenta de la administradora (pide la contraseña, mínimo 12 caracteres).
 6. La emprendedora entra a `/admin` y, en este orden: identidad y logotipo → categorías → productos con fotos y variantes → puntos de entrega y horarios → datos bancarios.
 
-El sitemap usa rutas de categoría de demostración (`vite.config.ts`); ajústalas por tienda si se personaliza el frontend.
+El sitemap (`vite.config.ts`) sólo lista páginas que existen en toda tienda: portada, catálogo y los textos públicos. Las categorías no se incluyen porque cada tienda da de alta las suyas.
 
 ## Inicialización de producción
 
@@ -104,7 +104,7 @@ Todos los campos ORM `DateTime(timezone=True)` usan el callable compartido `utc_
 
 El limitador de login vive en memoria y protege sólo cada instancia del proceso. En un despliegue con varias instancias configura además un rate limit compartido en el balanceador/WAF/plataforma para `/api/v1/auth/login` y monitoriza respuestas 401/429.
 
-Antes de producción también es obligatorio configurar un rate limit compartido en WAF, proxy o balanceador para `POST /api/v1/shop/reservations`. Debe limitar ráfagas y volumen sostenido por señales controladas por infraestructura (por ejemplo IP/origen de red), incluir un techo global y generar métricas/alertas de respuestas 413/422/429. El `fingerprint` enviado por el navegador es sólo una señal almacenable y nunca una identidad confiable ni la única clave del límite. No existe un limitador local en memoria para esta ruta porque no daría protección completa entre instancias.
+`POST /api/v1/shop/reservations` tiene un límite en memoria de 5 apartados creados por IP cada 10 minutos (`reservation_limiter` en `routers/shop.py`). Basta con una sola instancia por tienda, que es como se despliega hoy; la IP real llega por `--proxy-headers` en el `Dockerfile`. Si una tienda llegara a correr con varias instancias, ese límite debe moverse al proxy o a la base de datos, porque cada instancia contaría por separado.
 
 La API rechaza el body de creación al superar 32 KiB y el schema limita cada apartado a 30 líneas distintas, 20 unidades por variante y 60 unidades totales. Estas validaciones ocurren antes de bloquear filas de inventario; el motor repite los topes como defensa interna antes de ejecutar `SELECT ... FOR UPDATE`.
 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ChevronLeft, Link2, MessageCircle, Check } from 'lucide-react';
 import ShopLayout from '@/components/ShopLayout';
+import ProductPhoto from '@/components/ProductPhoto';
 import ProductCardItem from '@/components/ProductCardItem';
 import TrustPoints from '@/components/TrustPoints';
 import { Button } from '@/components/ui/button';
@@ -175,9 +176,10 @@ export default function Producto() {
         {/* En escritorio la foto acompaña mientras se lee la descripción. */}
         <div className="lg:sticky lg:top-20 lg:self-start">
           <div className="overflow-hidden rounded-3xl bg-white">
-            <img
+            <ProductPhoto
               src={images[imageIndex].url}
               alt={images[imageIndex].alt_text || product.name}
+              name={product.name}
               width={1024}
               height={1024}
               className="aspect-square w-full object-cover"
