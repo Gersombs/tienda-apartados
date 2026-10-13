@@ -61,6 +61,11 @@ def test_spa_shell_applies_only_known_palettes(tmp_path, monkeypatch):
     # Una paleta desconocida no se escribe en el HTML: se sirve el archivo tal cual.
     injected = frontend_module.serve_frontend("/", None, '"><script>')
     assert Path(injected.path) == dist / "index.html"
+    # El hero se precarga sólo en la portada y sólo si es una ruta propia.
+    hero = frontend_module.serve_frontend("/", None, None, '/api/v1/shop/images/3').body.decode()
+    assert '<link rel="preload" as="image" fetchpriority="high" href="/api/v1/shop/images/3" />' in hero
+    for path, url in [("/catalogo", "/images/x.webp"), ("/", "//evil.example/x"), ("/", "https://evil.example/x")]:
+        assert Path(frontend_module.serve_frontend(path, None, None, url).path) == dist / "index.html"
 
     css = (BACKEND_DIR.parent / "frontend" / "src" / "index.css").read_text(encoding="utf-8")
     assert all(f"[data-paleta='{key}']" in css for key in frontend_module.PALETTES if key != "cereza")
@@ -756,6 +761,8 @@ def test_new_store_is_blank_branded_and_has_its_admin(tmp_path):
             "AUTO_MIGRATE": "false",
             "LOAD_SEED_DATA": "false",
             "APP_DEBUG": "false",
+            # En Windows el pipe usaría cp1252 de un lado y UTF-8 del otro; la "ñ" de la contraseña lo rompe.
+            "PYTHONIOENCODING": "utf-8",
         }
     )
     command = [
@@ -765,7 +772,7 @@ def test_new_store_is_blank_branded_and_has_its_admin(tmp_path):
     ]
     run = lambda: subprocess.run(  # noqa: E731
         command, cwd=BACKEND_DIR, env=env, input="contraseña muy segura\n",
-        text=True, capture_output=True, timeout=60, check=False,
+        text=True, encoding="utf-8", capture_output=True, timeout=60, check=False,
     )
     first, second = run(), run()
     assert first.returncode == 0, first.stderr
@@ -793,7 +800,7 @@ def test_new_store_is_blank_branded_and_has_its_admin(tmp_path):
     def restore(*flags):
         return subprocess.run(
             [sys.executable, "-m", "cli", "restaurar-textos", *flags],
-            cwd=BACKEND_DIR, env=env, text=True, capture_output=True, timeout=60, check=False,
+            cwd=BACKEND_DIR, env=env, text=True, encoding="utf-8", capture_output=True, timeout=60, check=False,
         )
 
     preview = restore()
@@ -812,7 +819,7 @@ def test_new_store_rejects_short_password_before_touching_the_database(tmp_path)
     env.update({"ENVIRONMENT": "test", "DATABASE_URL": f"sqlite+aiosqlite:///{database.as_posix()}"})
     result = subprocess.run(
         [sys.executable, "-m", "cli", "nueva-tienda", "--nombre", "X", "--email", "x@example.com", "--password-stdin"],
-        cwd=BACKEND_DIR, env=env, input="corta\n", text=True, capture_output=True, timeout=60, check=False,
+        cwd=BACKEND_DIR, env=env, input="corta\n", text=True, encoding="utf-8", capture_output=True, timeout=60, check=False,
     )
     assert result.returncode != 0
     assert "12 caracteres" in result.stderr

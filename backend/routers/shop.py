@@ -419,23 +419,34 @@ async def cancel_confirmation(data: ConfirmationTokenRequest, db: AsyncSession =
     return {"status": reservation.status, "status_label": STATUS_LABELS[reservation.status]}
 
 
+# Las fotos nunca cambian, así que sólo la primera visita tras un reinicio paga la consulta a la base.
+# shortcut: tope por número de fotos (~300 KB c/u), no por bytes; pasar a un CDN si el catálogo crece mucho.
+_IMAGE_CACHE: Dict[int, tuple[str, bytes]] = {}
+_IMAGE_CACHE_MAX = 200
+
+
 @router.get("/images/{image_id}")
 async def uploaded_image(
     image_id: Annotated[int, Path(gt=0)],
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Fotos subidas desde el CRM. Nunca cambian: cada subida recibe un id nuevo."""
-    row = (
-        await db.execute(
-            select(Uploaded_images.content_type, Uploaded_images.data).where(
-                Uploaded_images.id == image_id
+    cached = _IMAGE_CACHE.get(image_id)
+    if cached is None:
+        row = (
+            await db.execute(
+                select(Uploaded_images.content_type, Uploaded_images.data).where(
+                    Uploaded_images.id == image_id
+                )
             )
-        )
-    ).first()
-    if row is None:
-        raise HTTPException(status_code=404, detail="Imagen no encontrada")
+        ).first()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Imagen no encontrada")
+        cached = (row.content_type, bytes(row.data))
+        if len(_IMAGE_CACHE) < _IMAGE_CACHE_MAX:
+            _IMAGE_CACHE[image_id] = cached
     return Response(
-        content=row.data,
-        media_type=row.content_type,
+        content=cached[1],
+        media_type=cached[0],
         headers={"Cache-Control": "public, max-age=31536000, immutable"},
     )

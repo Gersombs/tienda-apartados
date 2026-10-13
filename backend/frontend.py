@@ -63,7 +63,9 @@ def _content_type(asset: Path) -> str:
     return STATIC_MIME_TYPES.get(asset.suffix.lower()) or mimetypes.guess_type(asset.name)[0] or "application/octet-stream"
 
 
-def serve_frontend(path: str, shop_name: str | None = None, palette: str | None = None) -> Response:
+def serve_frontend(
+    path: str, shop_name: str | None = None, palette: str | None = None, hero_url: str | None = None
+) -> Response:
     if path.startswith("/api/"):
         return Response(status_code=404, content="Not found")
     if not DIST_DIR.is_dir():
@@ -103,7 +105,9 @@ def serve_frontend(path: str, shop_name: str | None = None, palette: str | None 
             }
         )
     palette = palette if palette in PALETTES else None
-    if (shop_name or palette) and asset.name in BRANDED_FILES:
+    # Sólo rutas propias: la portada pide el hero junto con el JS en vez de esperar a /bootstrap.
+    hero_url = hero_url if path == "/" and hero_url and hero_url.startswith("/") and not hero_url.startswith("//") else None
+    if (shop_name or palette or hero_url) and asset.name in BRANDED_FILES:
         # El build trae el nombre por defecto; cada tienda muestra el suyo (título, vista previa al compartir, manifest).
         branded = asset.read_text(encoding="utf-8")
         for default, escape in BRANDED_FILES[asset.name] if shop_name else []:
@@ -113,5 +117,8 @@ def serve_frontend(path: str, shop_name: str | None = None, palette: str | None 
             branded = branded.replace("<html ", f'<html data-paleta="{palette}" ', 1).replace(
                 DEFAULT_THEME_COLOR, f'<meta name="theme-color" content="{PALETTES[palette]}" />'
             )
+        if hero_url and asset.name == "index.html":
+            preload = f'<link rel="preload" as="image" fetchpriority="high" href="{html.escape(hero_url, quote=True)}" />'
+            branded = branded.replace("</head>", preload + "</head>", 1)
         return Response(branded, media_type=content_type, headers=headers)
     return FileResponse(asset, media_type=content_type, headers=headers)
