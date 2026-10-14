@@ -9,6 +9,7 @@ Reglas centrales:
 """
 
 import asyncio
+import contextlib
 import logging
 import re
 import secrets
@@ -43,6 +44,14 @@ from models.store_settings import Store_settings
 
 logger = logging.getLogger(__name__)
 SQLITE_RESERVATION_LOCK = asyncio.Lock()
+
+
+def _write_lock(db: AsyncSession):
+    """SQLite ignora FOR UPDATE: un candado del proceso ordena las escrituras en pruebas locales.
+
+    No protege entre procesos; producción exige PostgreSQL, que usa candados de fila reales.
+    """
+    return SQLITE_RESERVATION_LOCK if db.get_bind().dialect.name == "sqlite" else contextlib.nullcontext()
 
 # Ciudad de México ya no aplica horario de verano: UTC-6 fijo.
 MX_TZ = timezone(timedelta(hours=-6))
@@ -609,11 +618,8 @@ async def _expire_due_reservations_locked(db: AsyncSession) -> List[Reservations
 
 async def expire_due_reservations(db: AsyncSession) -> List[Reservations]:
     """Vence una sola vez y bloquea cada reservación antes de liberar stock."""
-    bind = db.get_bind()
-    if bind.dialect.name == "sqlite":
-        async with SQLITE_RESERVATION_LOCK:
-            return await _expire_due_reservations_locked(db)
-    return await _expire_due_reservations_locked(db)
+    async with _write_lock(db):
+        return await _expire_due_reservations_locked(db)
 
 
 # --------------------------------------------------------------------------- #
@@ -1090,16 +1096,8 @@ async def _create_reservation_locked(db: AsyncSession, payload: Dict[str, Any]) 
 
 
 async def create_reservation(db: AsyncSession, payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Serialize local SQLite writers; PostgreSQL relies on real row locks.
-
-    The process lock makes local integration tests deterministic but does not
-    provide cross-process guarantees. Production configuration rejects SQLite.
-    """
-    bind = db.get_bind()
-    if bind.dialect.name == "sqlite":
-        async with SQLITE_RESERVATION_LOCK:
-            return await _create_reservation_locked(db, payload)
-    return await _create_reservation_locked(db, payload)
+    async with _write_lock(db):
+        return await _create_reservation_locked(db, payload)
 
 
 # --------------------------------------------------------------------------- #
@@ -1192,12 +1190,8 @@ async def get_confirmation_reservation(
     db: AsyncSession, token: str
 ) -> Optional[Reservations]:
     """Lock and refresh the single reservation addressed by a private token."""
-
-    bind = db.get_bind()
-    if bind.dialect.name == "sqlite":
-        async with SQLITE_RESERVATION_LOCK:
-            return await _get_confirmation_reservation_locked(db, token)
-    return await _get_confirmation_reservation_locked(db, token)
+    async with _write_lock(db):
+        return await _get_confirmation_reservation_locked(db, token)
 
 
 # --------------------------------------------------------------------------- #
@@ -1214,8 +1208,12 @@ async def apply_status_change(
 ) -> Reservations:
     if new_status not in ALL_STATUSES:
         raise ReservationError("Estado no válido.")
+    # populate_existing: el apartado ya está en memoria y, sin esto, el candado devolvería su estado viejo.
     locked = await db.execute(
-        select(Reservations).where(Reservations.id == reservation.id).with_for_update()
+        select(Reservations)
+        .where(Reservations.id == reservation.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
     )
     reservation = locked.scalars().first()
     if reservation is None:

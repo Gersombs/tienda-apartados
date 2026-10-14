@@ -114,6 +114,47 @@ def test_cancellation_releases_once_and_delivery_consumes_once(client):
     assert outputs == 1
 
 
+def test_status_change_sees_a_cancellation_made_meanwhile(client):
+    import asyncio
+
+    from sqlalchemy import select
+    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+
+    from conftest import TEST_DB
+    from services import reservation_engine
+    from services.reservation_engine import ReservationError, apply_status_change
+
+    # La misma clase que usa el motor: otros tests recargan `models` y una copia no comparte el mapa de identidad.
+    Reservations = reservation_engine.Reservations
+
+    created, payload = create_reservation(client)
+    variant_id = payload["items"][0]["variant_id"]
+    with db_connection() as db:
+        reserved_before = db.execute("SELECT reserved_stock FROM product_variants WHERE id=?", (variant_id,)).fetchone()[0]
+
+    async def scenario():
+        engine = create_async_engine(f"sqlite+aiosqlite:///{TEST_DB.as_posix()}")
+        try:
+            by_folio = select(Reservations).where(Reservations.folio == created["folio"])
+            async with AsyncSession(engine, expire_on_commit=False) as admin_db:
+                stale = (await admin_db.execute(by_folio)).scalar_one()  # como el CRM antes de bloquear
+                await admin_db.commit()
+                async with AsyncSession(engine, expire_on_commit=False) as customer_db:
+                    fresh = (await customer_db.execute(by_folio)).scalar_one()
+                    await apply_status_change(customer_db, fresh, "cancelada", admin_user_id=None, admin_email="")
+                with pytest.raises(ReservationError, match="No se puede cambiar"):
+                    await apply_status_change(admin_db, stale, "entregada", admin_user_id=None, admin_email="")
+        finally:
+            await engine.dispose()
+
+    asyncio.run(scenario())
+    with db_connection() as db:
+        status = db.execute("SELECT status FROM reservations WHERE folio=?", (created["folio"],)).fetchone()[0]
+        reserved_after = db.execute("SELECT reserved_stock FROM product_variants WHERE id=?", (variant_id,)).fetchone()[0]
+    assert status == "cancelada"
+    assert reserved_after == reserved_before - payload["items"][0]["quantity"]
+
+
 def test_invalid_terminal_transition_returns_domain_error(client):
     csrf = login(client)
     created, _payload = create_reservation(client)

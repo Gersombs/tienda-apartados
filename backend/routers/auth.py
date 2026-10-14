@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 import time
@@ -170,7 +171,8 @@ async def login(
     )
     admin = result.scalars().first()
     password_hash = admin.password_hash if admin is not None else DUMMY_PASSWORD_HASH
-    valid = verify_password(password_hash, payload.password)
+    # Argon2 tarda ~100 ms y 64 MB: en otro hilo, para no congelar a las demás visitas mientras tanto.
+    valid = await asyncio.to_thread(verify_password, password_hash, payload.password)
     if admin is None or admin.is_active is not True or not valid:
         for key in rate_keys:
             login_limiter.fail(key)
@@ -180,7 +182,7 @@ async def login(
     for key in rate_keys:
         login_limiter.clear(key)
     if password_needs_rehash(admin.password_hash):
-        admin.password_hash = hash_password(payload.password)
+        admin.password_hash = await asyncio.to_thread(hash_password, payload.password)
 
     now = utc_now()
     session_token, csrf_token = _open_session(db, admin, now)
@@ -216,14 +218,14 @@ async def change_password(
     rate_keys = _rate_keys(request, admin.normalized_email)
     for key in rate_keys:
         login_limiter.check(key)
-    if not verify_password(admin.password_hash, payload.current_password):
+    if not await asyncio.to_thread(verify_password, admin.password_hash, payload.current_password):
         for key in rate_keys:
             login_limiter.fail(key)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La contraseña actual no es correcta.")
 
     for key in rate_keys:
         login_limiter.clear(key)
-    admin.password_hash = hash_password(payload.new_password)
+    admin.password_hash = await asyncio.to_thread(hash_password, payload.new_password)
     # Cierra todas las sesiones (un celular perdido, una cookie copiada) y da una nueva a este dispositivo.
     await db.execute(delete(Admin_sessions).where(Admin_sessions.admin_id == admin.id))
     session_token, csrf_token = _open_session(db, admin, utc_now())
