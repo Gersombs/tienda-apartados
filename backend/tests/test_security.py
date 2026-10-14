@@ -406,18 +406,18 @@ def test_password_change_checks_current_and_signs_out_other_devices(client):
             )
 
 
-def test_login_rate_limit_ignores_spoofed_forwarded_for(client):
+def test_login_rate_limit_keys_on_the_visitor_not_the_cdn(client):
     login_limiter.reset_for_tests()
     attempt = lambda forwarded: client.post(
         "/api/v1/auth/login",
         json={"email": ADMIN_EMAIL, "password": "incorrect-password"},
         headers={"Origin": "http://testserver", "X-Forwarded-For": forwarded},
     ).status_code
-    # Izquierda: lo que inventa el atacante. Luego su IP real. Derecha: un salto interno de la plataforma.
-    statuses = [attempt(f"1.1.1.{i}, 8.8.8.8, 10.0.0.5") for i in range(6)]
+    # Como lo entrega Railway: la visita a la izquierda y luego la CDN (cambia entre peticiones).
+    statuses = [attempt(f"8.8.8.8, 152.233.23.{i}") for i in range(6)]
     assert statuses == [401] * 5 + [429]
-    # Otra visita detrás del mismo proxy interno no hereda el bloqueo.
-    assert attempt("9.9.9.9, 10.0.0.5") == 401
+    # Otra visita que pasa por la misma CDN no hereda el bloqueo.
+    assert attempt("9.9.9.9, 152.233.23.1") == 401
 
 
 def test_rate_limiter_forgets_ips_once_their_window_passes():

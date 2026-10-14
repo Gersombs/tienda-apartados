@@ -832,7 +832,8 @@ def test_new_store_is_blank_branded_and_has_its_admin(tmp_path):
 def test_new_store_rejects_short_password_before_touching_the_database(tmp_path):
     database = tmp_path / "corta.db"
     env = os.environ.copy()
-    env.update({"ENVIRONMENT": "test", "DATABASE_URL": f"sqlite+aiosqlite:///{database.as_posix()}"})
+    # PYTHONIOENCODING: en una consola cp1252 de Windows el error con "ñ" no se podría leer.
+    env.update({"ENVIRONMENT": "test", "DATABASE_URL": f"sqlite+aiosqlite:///{database.as_posix()}", "PYTHONIOENCODING": "utf-8"})
     result = subprocess.run(
         [sys.executable, "-m", "cli", "nueva-tienda", "--nombre", "X", "--email", "x@example.com", "--password-stdin"],
         cwd=BACKEND_DIR, env=env, input="corta\n", text=True, encoding="utf-8", capture_output=True, timeout=60, check=False,

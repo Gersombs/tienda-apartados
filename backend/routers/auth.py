@@ -84,20 +84,17 @@ login_limiter = LoginRateLimiter()
 
 
 def _client_ip(request: Request) -> str:
-    """IP real de la visita: la última IP pública de X-Forwarded-For.
+    """IP real de la visita: la primera de X-Forwarded-For.
 
-    Los proxies de la plataforma agregan a la derecha (sus saltos internos tienen IP privada y se saltan);
-    lo que escriba el cliente queda a la izquierda de su IP real y nunca se alcanza.
+    El borde de Railway reemplaza el X-Forwarded-For que mande el cliente y deja [visita, CDN, ...];
+    a la derecha va la IP de su CDN, compartida por todas las visitas, así que no sirve como llave.
+    shortcut: confía en que el borde de Railway reemplaza el encabezado; con otro proxy delante, revisar.
     """
-    hops = ",".join(request.headers.getlist("x-forwarded-for")).split(",")
-    for hop in reversed(hops):
-        try:
-            address = ip_address(hop.strip())
-        except ValueError:
-            continue
-        if address.is_global:
-            return str(address)
-    return request.client.host if request.client else "unknown"
+    first = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+    try:
+        return str(ip_address(first))
+    except ValueError:
+        return request.client.host if request.client else "unknown"
 
 
 def _rate_keys(request: Request, email: str) -> tuple[str, str]:
