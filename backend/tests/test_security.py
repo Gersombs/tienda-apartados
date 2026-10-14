@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from core.auth import private_token_hash
-from core.config import Settings
+from core.config import Settings, settings
 from core.reservation_limits import MAX_RESERVATION_BODY_BYTES, MAX_RESERVATION_TOTAL_UNITS
 from main import PROTECTED_AUTH_ENDPOINTS, PUBLIC_ENDPOINTS, app, is_public_request
 from routers.auth import GENERIC_LOGIN_ERROR, LoginRateLimiter, login_limiter
@@ -387,15 +387,19 @@ def test_password_change_checks_current_and_signs_out_other_devices(client):
     assert change("incorrecta", new_password).status_code == 400
     assert change(ADMIN_PASSWORD, "corta").status_code == 422
     assert client.post("/api/v1/auth/password", json={"current_password": ADMIN_PASSWORD, "new_password": new_password}).status_code == 403
+    before_change = dict(client.cookies)
     assert change(ADMIN_PASSWORD, new_password).status_code == 204
-    assert client.get("/api/v1/auth/me").status_code == 200  # este dispositivo sigue dentro
+    assert client.get("/api/v1/auth/me").status_code == 200  # este dispositivo sigue dentro, con sesión nueva
 
     this_device = dict(client.cookies)
-    client.cookies.clear()
-    client.cookies.update(other_device)
-    assert client.get("/api/v1/auth/me").status_code == 401
+    assert this_device[settings.session_cookie_name] != before_change[settings.session_cookie_name]
+    for stale in (other_device, before_change):
+        client.cookies.clear()
+        client.cookies.update(stale)
+        assert client.get("/api/v1/auth/me").status_code == 401
     client.cookies.clear()
     client.cookies.update(this_device)
+    csrf = this_device[settings.csrf_cookie_name]
     assert change(new_password, ADMIN_PASSWORD).status_code == 204  # deja la cuenta como la esperan los demás tests
 
 

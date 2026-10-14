@@ -121,6 +121,21 @@ def _set_session_cookies(response: Response, session_token: str, csrf_token: str
     response.headers["Cache-Control"] = "no-store"
 
 
+def _open_session(db: AsyncSession, admin: Admin_accounts, now) -> tuple[str, str]:
+    """Agrega una sesión nueva (sin hacer commit) y devuelve sus tokens en claro para las cookies."""
+    session_token = new_secret_token()
+    csrf_token = new_secret_token()
+    db.add(
+        Admin_sessions(
+            admin_id=admin.id,
+            token_hash=keyed_token_hash(session_token),
+            csrf_hash=keyed_token_hash(csrf_token),
+            expires_at=now + timedelta(minutes=settings.session_lifetime_minutes),
+        )
+    )
+    return session_token, csrf_token
+
+
 @router.post("/login", response_model=LoginResponse)
 async def login(
     payload: LoginRequest,
@@ -152,16 +167,7 @@ async def login(
         admin.password_hash = hash_password(payload.password)
 
     now = utc_now()
-    session_token = new_secret_token()
-    csrf_token = new_secret_token()
-    db.add(
-        Admin_sessions(
-            admin_id=admin.id,
-            token_hash=keyed_token_hash(session_token),
-            csrf_hash=keyed_token_hash(csrf_token),
-            expires_at=now + timedelta(minutes=settings.session_lifetime_minutes),
-        )
-    )
+    session_token, csrf_token = _open_session(db, admin, now)
     admin.last_login_at = now
     await db.commit()
     _set_session_cookies(response, session_token, csrf_token)
@@ -199,14 +205,17 @@ async def change_password(
             login_limiter.fail(key)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La contraseña actual no es correcta.")
 
+    for key in rate_keys:
+        login_limiter.clear(key)
     admin.password_hash = hash_password(payload.new_password)
-    # Cierra los demás dispositivos (por ejemplo, un celular perdido); éste sigue dentro.
-    current: Admin_sessions = request.state.admin_session
-    await db.execute(
-        delete(Admin_sessions).where(Admin_sessions.admin_id == admin.id, Admin_sessions.id != current.id)
-    )
+    # Cierra todas las sesiones (un celular perdido, una cookie copiada) y da una nueva a este dispositivo.
+    await db.execute(delete(Admin_sessions).where(Admin_sessions.admin_id == admin.id))
+    session_token, csrf_token = _open_session(db, admin, utc_now())
     await db.commit()
-    return Response(status_code=status.HTTP_204_NO_CONTENT, headers={"Cache-Control": "no-store"})
+    logger.info("Administrative password changed for admin id %s", admin.id)
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    _set_session_cookies(response, session_token, csrf_token)
+    return response
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
