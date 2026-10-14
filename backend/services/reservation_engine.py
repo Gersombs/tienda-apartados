@@ -1205,7 +1205,9 @@ async def apply_status_change(
     admin_user_id: Optional[str],
     admin_email: str,
     note: str = "",
-) -> Reservations:
+    mark_unread: bool = False,
+) -> bool:
+    """Devuelve False si el apartado ya estaba en ese estado (doble toque): así no se repite el correo."""
     if new_status not in ALL_STATUSES:
         raise ReservationError("Estado no válido.")
     # populate_existing: el apartado ya está en memoria y, sin esto, el candado devolvería su estado viejo.
@@ -1220,7 +1222,7 @@ async def apply_status_change(
         raise ReservationError("La reservación ya no existe.")
     previous = reservation.status
     if previous == new_status:
-        return reservation
+        return False
     if new_status not in ALLOWED_TRANSITIONS.get(previous, set()):
         raise ReservationError(
             f"No se puede cambiar una reservación de {STATUS_LABELS.get(previous, previous)} "
@@ -1259,8 +1261,10 @@ async def apply_status_change(
         admin_email=admin_email,
         note=note,
     )
+    if mark_unread:
+        reservation.is_unread = True
     await db.commit()
-    return reservation
+    return True
 
 
 def next_statuses(status: str) -> List[str]:
@@ -1279,9 +1283,14 @@ async def cancel_by_customer(db: AsyncSession, token: str) -> Optional[Reservati
         return None
     if reservation.status not in ACTIVE_STATUSES:
         raise ReservationError("Este apartado ya no está activo, así que no se puede cancelar.")
-    reservation = await apply_status_change(
-        db, reservation, STATUS_CANCELLED, admin_user_id=None, admin_email="", note=CANCELLED_BY_CUSTOMER
+    # Mismo objeto que bloquea apply_status_change (misma sesión), así que queda actualizado.
+    await apply_status_change(
+        db,
+        reservation,
+        STATUS_CANCELLED,
+        admin_user_id=None,
+        admin_email="",
+        note=CANCELLED_BY_CUSTOMER,
+        mark_unread=True,
     )
-    reservation.is_unread = True
-    await db.commit()
     return reservation

@@ -75,12 +75,11 @@ async def bootstrap(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
 
         featured_result = await db.execute(
             select(Products)
-            .where(Products.is_featured.is_(True), Products.is_active.is_(True))
+            .where(Products.is_featured.is_(True), Products.is_active.is_(True), Products.is_archived.is_(False))
             .order_by(Products.sort_order, Products.id)
             .limit(8)
         )
         featured = list(featured_result.scalars().all())
-        featured = [p for p in featured if not p.is_archived]
         ids = [p.id for p in featured]
         images = await load_images_for_products(db, ids)
         variants = await load_variants_for_products(db, ids)
@@ -129,10 +128,10 @@ async def list_products(
         categories = await _categories_map(db)
         result = await db.execute(
             select(Products)
-            .where(Products.is_active.is_(True))
+            .where(Products.is_active.is_(True), Products.is_archived.is_(False))
             .order_by(Products.sort_order, Products.id)
         )
-        products = [p for p in result.scalars().all() if not p.is_archived]
+        products = list(result.scalars().all())
 
         if category:
             match = next((c for c in categories.values() if c.slug == category), None)
@@ -234,11 +233,12 @@ async def product_detail(
                 Products.category_id == product.category_id,
                 Products.id != product.id,
                 Products.is_active.is_(True),
+                Products.is_archived.is_(False),
             )
             .order_by(Products.sort_order, Products.id)
             .limit(4)
         )
-        related = [p for p in related_result.scalars().all() if not p.is_archived]
+        related = list(related_result.scalars().all())
         related_ids = [p.id for p in related]
         related_images = await load_images_for_products(db, related_ids)
         related_variants = await load_variants_for_products(db, related_ids)

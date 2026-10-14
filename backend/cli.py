@@ -36,7 +36,7 @@ async def create_admin(email: str, name: str, password: str) -> None:
     normalized = validate_admin_email(email)
     password_hash = hash_password(password)
 
-    await upgrade_database()
+    # Sin migrar: el código de esta PC puede ir atrasado o adelantado respecto a la tienda en vivo.
     await initialize_database()
     try:
         async with db_manager.async_session_maker() as db:

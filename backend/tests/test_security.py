@@ -406,6 +406,24 @@ def test_password_change_checks_current_and_signs_out_other_devices(client):
             )
 
 
+def test_login_clears_closed_and_expired_sessions(client):
+    csrf = login(client)
+    assert client.post("/api/v1/auth/logout", headers={"X-CSRF-Token": csrf}).status_code == 204
+    with db_connection() as db:
+        db.execute(
+            "INSERT INTO admin_sessions (admin_id, token_hash, csrf_hash, expires_at, created_at, last_used_at)"
+            " SELECT id, 'vencida', 'x', '2020-01-01 00:00:00.000000', '2020-01-01 00:00:00.000000',"
+            " '2020-01-01 00:00:00.000000' FROM admin_accounts WHERE normalized_email = ?",
+            (ADMIN_EMAIL,),
+        )
+    login(client)
+    with db_connection() as db:
+        stale = db.execute(
+            "SELECT COUNT(*) FROM admin_sessions WHERE revoked_at IS NOT NULL OR token_hash = 'vencida'"
+        ).fetchone()[0]
+    assert stale == 0
+
+
 def test_login_rate_limit_keys_on_the_visitor_not_the_cdn(client):
     login_limiter.reset_for_tests()
     attempt = lambda forwarded: client.post(

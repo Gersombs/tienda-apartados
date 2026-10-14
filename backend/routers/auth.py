@@ -11,7 +11,7 @@ from datetime import timedelta
 from ipaddress import ip_address
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from sqlalchemy import delete, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import (
@@ -182,6 +182,13 @@ async def login(
         admin.password_hash = await asyncio.to_thread(hash_password, payload.password)
 
     now = utc_now()
+    # Limpieza de paso: las sesiones vencidas o cerradas de esta cuenta ya no sirven para nada.
+    await db.execute(
+        delete(Admin_sessions).where(
+            Admin_sessions.admin_id == admin.id,
+            or_(Admin_sessions.expires_at <= now, Admin_sessions.revoked_at.is_not(None)),
+        )
+    )
     session_token, csrf_token = _open_session(db, admin, now)
     admin.last_login_at = now
     await db.commit()
@@ -236,7 +243,6 @@ async def change_password(
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
     request: Request,
-    response: Response,
     _admin: Admin_accounts = Depends(get_current_admin_account),
     _csrf: None = Depends(require_csrf),
     db: AsyncSession = Depends(get_db),
@@ -244,6 +250,8 @@ async def logout(
     session: Admin_sessions = request.state.admin_session
     session.revoked_at = utc_now()
     await db.commit()
+    # Respuesta propia: la que inyecta FastAPI no trae código de estado si se devuelve tal cual.
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
     response.delete_cookie(settings.session_cookie_name, path="/", secure=settings.cookie_secure, samesite="lax")
     response.delete_cookie(settings.csrf_cookie_name, path="/", secure=settings.cookie_secure, samesite="lax")
     response.headers["Cache-Control"] = "no-store"

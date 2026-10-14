@@ -481,7 +481,7 @@ async def change_status(
         raise HTTPException(status_code=404, detail="Reservación no encontrada")
 
     try:
-        await apply_status_change(
+        changed = await apply_status_change(
             db,
             reservation,
             data.status,
@@ -498,7 +498,7 @@ async def change_status(
         raise HTTPException(status_code=500, detail="No pudimos actualizar el estado.")
 
     email_results: List[Dict[str, Any]] = []
-    template = mailer.status_template(data.status)
+    template = mailer.status_template(data.status) if changed else None
     if template:
         try:
             email_results = await mailer.dispatch_reservation_emails(

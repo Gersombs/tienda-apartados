@@ -77,12 +77,17 @@ def test_cancellation_releases_once_and_delivery_consumes_once(client):
         json={"status": "cancelada", "note": "Prueba"},
         headers=headers,
     )
+    email_attempts = lambda: db_connection().execute(
+        "SELECT SUM(attempts) FROM notifications WHERE reservation_id=?", (reservation["id"],)
+    ).fetchone()[0]
+    attempts_after_cancel = email_attempts()
     repeated = client.post(
         f"/api/v1/crm/reservations/{reservation['id']}/status",
         json={"status": "cancelada", "note": "Prueba"},
         headers=headers,
     )
     assert cancelled.status_code == repeated.status_code == 200
+    assert email_attempts() == attempts_after_cancel  # el doble toque no repite el correo
     with db_connection() as db:
         after = db.execute("SELECT reserved_stock FROM product_variants WHERE id=?", (variant_id,)).fetchone()[0]
         releases = db.execute(
