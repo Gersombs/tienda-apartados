@@ -372,6 +372,19 @@ def test_login_rate_limit(client):
     assert "Retry-After" in limited.headers
 
 
+def test_login_rate_limit_ignores_spoofed_forwarded_for(client):
+    login_limiter.reset_for_tests()
+    statuses = [
+        client.post(
+            "/api/v1/auth/login",
+            json={"email": ADMIN_EMAIL, "password": "incorrect-password"},
+            headers={"Origin": "http://testserver", "X-Forwarded-For": f"10.0.0.{i}, 203.0.113.7"},
+        ).status_code
+        for i in range(6)
+    ]
+    assert statuses == [401] * 5 + [429]
+
+
 def test_rate_limiter_forgets_ips_once_their_window_passes():
     limiter = LoginRateLimiter(max_attempts=2, window_seconds=60)
     limiter.check("visita")

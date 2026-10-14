@@ -82,7 +82,9 @@ login_limiter = LoginRateLimiter()
 
 
 def _rate_keys(request: Request, email: str) -> tuple[str, str]:
-    peer = request.client.host if request.client else "unknown"
+    # La última entrada de X-Forwarded-For la escribe el proxy de la plataforma; las anteriores las elige el cliente.
+    forwarded = ",".join(request.headers.getlist("x-forwarded-for"))
+    peer = forwarded.rsplit(",", 1)[-1].strip() or (request.client.host if request.client else "unknown")
     peer_key = hashlib.sha256(f"ip|{peer}".encode("utf-8")).hexdigest()
     account_key = hashlib.sha256(
         f"account|{peer}|{normalize_email(email)}".encode("utf-8")

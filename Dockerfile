@@ -27,6 +27,7 @@ COPY backend/ ./
 COPY --from=frontend /app/frontend/dist /app/frontend/dist
 EXPOSE 8000
 # Una sola instancia por tienda, así que migrar al arrancar es seguro.
-# shortcut: --forwarded-allow-ips='*' confía en el proxy de la plataforma para la IP real
-# del limitador de login; sólo es correcto si el contenedor no es accesible directamente.
-CMD ["sh", "-c", "python -m alembic upgrade head && exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*'"]
+# Sin --proxy-headers: uvicorn tomaría la PRIMERA IP de X-Forwarded-For, que el cliente falsifica.
+# shortcut: la IP real sale de la última entrada en routers/auth.py (_rate_keys); asume un solo proxy
+# delante y contenedor no accesible directo. Si se agrega otro proxy (Cloudflare), revisar.
+CMD ["sh", "-c", "python -m alembic upgrade head && exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --no-proxy-headers"]
