@@ -28,6 +28,6 @@ COPY --from=frontend /app/frontend/dist /app/frontend/dist
 EXPOSE 8000
 # Una sola instancia por tienda, así que migrar al arrancar es seguro.
 # Sin --proxy-headers: uvicorn tomaría la PRIMERA IP de X-Forwarded-For, que el cliente falsifica.
-# shortcut: la IP real sale de la última entrada en routers/auth.py (_rate_keys); asume un solo proxy
-# delante y contenedor no accesible directo. Si se agrega otro proxy (Cloudflare), revisar.
+# shortcut: la IP real es la última IP pública de X-Forwarded-For (routers/auth.py, _client_ip); asume
+# que el proxy agrega a la derecha y el contenedor no es accesible directo. Con Cloudflare delante, revisar.
 CMD ["sh", "-c", "python -m alembic upgrade head && exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --no-proxy-headers"]

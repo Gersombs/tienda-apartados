@@ -5,7 +5,7 @@ import re
 import pytest
 from pydantic import ValidationError
 
-from core.auth import private_token_hash
+from core.auth import hash_password, private_token_hash
 from core.config import Settings, settings
 from core.reservation_limits import MAX_RESERVATION_BODY_BYTES, MAX_RESERVATION_TOTAL_UNITS
 from main import PROTECTED_AUTH_ENDPOINTS, PUBLIC_ENDPOINTS, app, is_public_request
@@ -384,36 +384,40 @@ def test_password_change_checks_current_and_signs_out_other_devices(client):
         headers={"X-CSRF-Token": csrf},
     )
 
-    assert change("incorrecta", new_password).status_code == 400
-    assert change(ADMIN_PASSWORD, "corta").status_code == 422
-    assert client.post("/api/v1/auth/password", json={"current_password": ADMIN_PASSWORD, "new_password": new_password}).status_code == 403
-    before_change = dict(client.cookies)
-    assert change(ADMIN_PASSWORD, new_password).status_code == 204
-    assert client.get("/api/v1/auth/me").status_code == 200  # este dispositivo sigue dentro, con sesión nueva
+    try:
+        assert change("incorrecta", new_password).status_code == 400
+        assert change(ADMIN_PASSWORD, "corta").status_code == 422
+        assert client.post("/api/v1/auth/password", json={"current_password": ADMIN_PASSWORD, "new_password": new_password}).status_code == 403
+        before_change = dict(client.cookies)
+        assert change(ADMIN_PASSWORD, new_password).status_code == 204
+        assert client.get("/api/v1/auth/me").status_code == 200  # este dispositivo sigue dentro, con sesión nueva
 
-    this_device = dict(client.cookies)
-    assert this_device[settings.session_cookie_name] != before_change[settings.session_cookie_name]
-    for stale in (other_device, before_change):
-        client.cookies.clear()
-        client.cookies.update(stale)
-        assert client.get("/api/v1/auth/me").status_code == 401
-    client.cookies.clear()
-    client.cookies.update(this_device)
-    csrf = this_device[settings.csrf_cookie_name]
-    assert change(new_password, ADMIN_PASSWORD).status_code == 204  # deja la cuenta como la esperan los demás tests
+        assert client.cookies[settings.session_cookie_name] != before_change[settings.session_cookie_name]
+        for stale in (other_device, before_change):
+            client.cookies.clear()
+            client.cookies.update(stale)
+            assert client.get("/api/v1/auth/me").status_code == 401
+    finally:
+        # Aunque algo falle, la cuenta compartida vuelve a la contraseña que esperan los demás tests.
+        with db_connection() as db:
+            db.execute(
+                "UPDATE admin_accounts SET password_hash = ? WHERE normalized_email = ?",
+                (hash_password(ADMIN_PASSWORD), ADMIN_EMAIL),
+            )
 
 
 def test_login_rate_limit_ignores_spoofed_forwarded_for(client):
     login_limiter.reset_for_tests()
-    statuses = [
-        client.post(
-            "/api/v1/auth/login",
-            json={"email": ADMIN_EMAIL, "password": "incorrect-password"},
-            headers={"Origin": "http://testserver", "X-Forwarded-For": f"10.0.0.{i}, 203.0.113.7"},
-        ).status_code
-        for i in range(6)
-    ]
+    attempt = lambda forwarded: client.post(
+        "/api/v1/auth/login",
+        json={"email": ADMIN_EMAIL, "password": "incorrect-password"},
+        headers={"Origin": "http://testserver", "X-Forwarded-For": forwarded},
+    ).status_code
+    # Izquierda: lo que inventa el atacante. Luego su IP real. Derecha: un salto interno de la plataforma.
+    statuses = [attempt(f"1.1.1.{i}, 8.8.8.8, 10.0.0.5") for i in range(6)]
     assert statuses == [401] * 5 + [429]
+    # Otra visita detrás del mismo proxy interno no hereda el bloqueo.
+    assert attempt("9.9.9.9, 10.0.0.5") == 401
 
 
 def test_rate_limiter_forgets_ips_once_their_window_passes():

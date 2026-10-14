@@ -7,6 +7,7 @@ import logging
 import time
 from collections import defaultdict, deque
 from datetime import timedelta
+from ipaddress import ip_address
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import delete, select
@@ -81,10 +82,25 @@ class LoginRateLimiter:
 login_limiter = LoginRateLimiter()
 
 
+def _client_ip(request: Request) -> str:
+    """IP real de la visita: la última IP pública de X-Forwarded-For.
+
+    Los proxies de la plataforma agregan a la derecha (sus saltos internos tienen IP privada y se saltan);
+    lo que escriba el cliente queda a la izquierda de su IP real y nunca se alcanza.
+    """
+    hops = ",".join(request.headers.getlist("x-forwarded-for")).split(",")
+    for hop in reversed(hops):
+        try:
+            address = ip_address(hop.strip())
+        except ValueError:
+            continue
+        if address.is_global:
+            return str(address)
+    return request.client.host if request.client else "unknown"
+
+
 def _rate_keys(request: Request, email: str) -> tuple[str, str]:
-    # La última entrada de X-Forwarded-For la escribe el proxy de la plataforma; las anteriores las elige el cliente.
-    forwarded = ",".join(request.headers.getlist("x-forwarded-for"))
-    peer = forwarded.rsplit(",", 1)[-1].strip() or (request.client.host if request.client else "unknown")
+    peer = _client_ip(request)
     peer_key = hashlib.sha256(f"ip|{peer}".encode("utf-8")).hexdigest()
     account_key = hashlib.sha256(
         f"account|{peer}|{normalize_email(email)}".encode("utf-8")
