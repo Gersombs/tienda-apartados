@@ -9,7 +9,7 @@ from collections import defaultdict, deque
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import (
@@ -26,7 +26,7 @@ from core.time_utils import utc_now
 from dependencies.auth import get_current_admin_account, get_current_user, require_csrf
 from models.admin_accounts import Admin_accounts
 from models.admin_sessions import Admin_sessions
-from schemas.auth import LoginRequest, LoginResponse, UserResponse
+from schemas.auth import LoginRequest, LoginResponse, PasswordChangeRequest, UserResponse
 
 
 router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
@@ -180,6 +180,33 @@ async def login(
 @router.get("/me", response_model=UserResponse)
 async def me(current_user: UserResponse = Depends(get_current_user)) -> UserResponse:
     return current_user
+
+
+@router.post("/password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_password(
+    payload: PasswordChangeRequest,
+    request: Request,
+    admin: Admin_accounts = Depends(get_current_admin_account),
+    _csrf: None = Depends(require_csrf),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    # Mismo límite que el login: una sesión robada no puede adivinar la contraseña actual.
+    rate_keys = _rate_keys(request, admin.normalized_email)
+    for key in rate_keys:
+        login_limiter.check(key)
+    if not verify_password(admin.password_hash, payload.current_password):
+        for key in rate_keys:
+            login_limiter.fail(key)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La contraseña actual no es correcta.")
+
+    admin.password_hash = hash_password(payload.new_password)
+    # Cierra los demás dispositivos (por ejemplo, un celular perdido); éste sigue dentro.
+    current: Admin_sessions = request.state.admin_session
+    await db.execute(
+        delete(Admin_sessions).where(Admin_sessions.admin_id == admin.id, Admin_sessions.id != current.id)
+    )
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT, headers={"Cache-Control": "no-store"})
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

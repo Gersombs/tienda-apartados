@@ -57,6 +57,7 @@ PROTECTED_AUTH_ENDPOINTS = frozenset(
     {
         ("GET", "/api/v1/auth/me"),
         ("POST", "/api/v1/auth/logout"),
+        ("POST", "/api/v1/auth/password"),
     }
 )
 

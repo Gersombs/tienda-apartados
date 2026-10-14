@@ -372,6 +372,33 @@ def test_login_rate_limit(client):
     assert "Retry-After" in limited.headers
 
 
+def test_password_change_checks_current_and_signs_out_other_devices(client):
+    login(client)
+    other_device = dict(client.cookies)
+    client.cookies.clear()
+    csrf = login(client)
+    new_password = "otra-clave-muy-larga-2026"
+    change = lambda current, new: client.post(
+        "/api/v1/auth/password",
+        json={"current_password": current, "new_password": new},
+        headers={"X-CSRF-Token": csrf},
+    )
+
+    assert change("incorrecta", new_password).status_code == 400
+    assert change(ADMIN_PASSWORD, "corta").status_code == 422
+    assert client.post("/api/v1/auth/password", json={"current_password": ADMIN_PASSWORD, "new_password": new_password}).status_code == 403
+    assert change(ADMIN_PASSWORD, new_password).status_code == 204
+    assert client.get("/api/v1/auth/me").status_code == 200  # este dispositivo sigue dentro
+
+    this_device = dict(client.cookies)
+    client.cookies.clear()
+    client.cookies.update(other_device)
+    assert client.get("/api/v1/auth/me").status_code == 401
+    client.cookies.clear()
+    client.cookies.update(this_device)
+    assert change(new_password, ADMIN_PASSWORD).status_code == 204  # deja la cuenta como la esperan los demás tests
+
+
 def test_login_rate_limit_ignores_spoofed_forwarded_for(client):
     login_limiter.reset_for_tests()
     statuses = [

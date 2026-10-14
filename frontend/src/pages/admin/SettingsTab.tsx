@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, MapPin, Settings as SettingsIcon, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, KeyRound, MapPin, Settings as SettingsIcon, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { confirmAction } from '@/components/ui/confirm-dialog';
 import { Input } from '@/components/ui/input';
@@ -614,6 +614,56 @@ export function SettingsTab({ toast }: { toast: ToastFn }) {
           Agregar punto de entrega
         </Button>
       </section>
+
+      <PasswordSection toast={toast} />
     </div>
+  );
+}
+
+function PasswordSection({ toast }: { toast: ToastFn }) {
+  const [form, setForm] = useState({ current: '', next: '', confirm: '' });
+  const [saving, setSaving] = useState(false);
+  const field = (key: keyof typeof form, label: string, autoComplete: string) => (
+    <div>
+      <Label htmlFor={`password-${key}`}>{label}</Label>
+      <Input
+        id={`password-${key}`}
+        type="password"
+        autoComplete={autoComplete}
+        value={form[key]}
+        onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+      />
+    </div>
+  );
+
+  const save = async () => {
+    if (form.next.length < 12) return toast({ title: 'La nueva contraseña debe tener al menos 12 caracteres.', variant: 'destructive' });
+    if (form.next !== form.confirm) return toast({ title: 'Las contraseñas nuevas no coinciden.', variant: 'destructive' });
+    setSaving(true);
+    try {
+      await api('/api/v1/auth/password', 'POST', { current_password: form.current, new_password: form.next });
+      setForm({ current: '', next: '', confirm: '' });
+      toast({ title: 'Contraseña cambiada. Se cerró la sesión en tus otros dispositivos.' });
+    } catch (e) {
+      toast({ title: apiError(e), variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="rounded-2xl border border-border bg-card p-4">
+      <h2 className="flex items-center gap-2 text-base">
+        <KeyRound className="h-4 w-4 text-primary" /> Contraseña
+      </h2>
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        {field('current', 'Contraseña actual', 'current-password')}
+        {field('next', 'Nueva (mínimo 12 caracteres)', 'new-password')}
+        {field('confirm', 'Repite la nueva', 'new-password')}
+      </div>
+      <Button className="tap mt-4 rounded-full" onClick={save} disabled={saving || !form.current}>
+        Cambiar contraseña
+      </Button>
+    </section>
   );
 }
