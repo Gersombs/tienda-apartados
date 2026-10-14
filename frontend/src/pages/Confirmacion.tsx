@@ -56,17 +56,48 @@ function readPrivateFragment() {
   return { token: params.get('t') || '', esNueva: params.get('nueva') === '1' };
 }
 
-/** Evento de Google Calendar con la cita de entrega (sin el enlace privado, que es secreto). */
+// iPhone/iPad (los iPad nuevos se presentan como Mac con pantalla táctil).
+const ES_IOS =
+  /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+/** Lo que el mapa debe buscar: la dirección si la hay; sólo con el nombre ("Metro X") adivina. */
+function lugar(reservation: Reservation) {
+  return reservation.delivery_point_address || reservation.delivery_point_name;
+}
+
+/** Abre la app de mapas: Apple Maps en iPhone; en Android el enlace de Google abre su app. */
+function mapaUrl(reservation: Reservation) {
+  const q = encodeURIComponent(lugar(reservation));
+  return ES_IOS ? `https://maps.apple.com/?q=${q}` : `https://www.google.com/maps/search/?api=1&query=${q}`;
+}
+
+/** Cita de entrega para el calendario (sin el enlace privado, que es secreto). */
 function calendarioUrl(reservation: Reservation, shopName: string) {
+  const titulo = `Recoger mi apartado ${reservation.folio} — ${shopName}`;
+  const detalles = `Total a pagar al recibir: ${pesos(reservation.total_amount)}. ${AVISO_SIN_PAGO}`;
+  const sitio = [reservation.delivery_point_name, lugar(reservation)].filter((v, i, all) => v && all.indexOf(v) === i).join(', ');
+  if (ES_IOS) {
+    // El iPhone abre un archivo .ics directo en su app Calendario.
+    const params = new URLSearchParams({
+      folio: reservation.folio,
+      date: reservation.delivery_date,
+      start: reservation.slot_start.slice(0, 5),
+      end: reservation.slot_end.slice(0, 5),
+      title: titulo,
+      place: sitio,
+      details: detalles,
+    });
+    return `/api/v1/shop/calendar.ics?${params.toString()}`;
+  }
   const dia = reservation.delivery_date.replace(/-/g, '');
   const hora = (value: string) => `${value.replace(':', '').slice(0, 4)}00`;
   const params = new URLSearchParams({
     action: 'TEMPLATE',
-    text: `Recoger mi apartado ${reservation.folio} — ${shopName}`,
+    text: titulo,
     dates: `${dia}T${hora(reservation.slot_start)}/${dia}T${hora(reservation.slot_end)}`,
     ctz: 'America/Mexico_City',
-    location: [reservation.delivery_point_name, reservation.delivery_point_reference].filter(Boolean).join(' — '),
-    details: `Total a pagar al recibir: ${pesos(reservation.total_amount)}. ${AVISO_SIN_PAGO}`,
+    location: sitio,
+    details: detalles,
   });
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
@@ -293,14 +324,18 @@ export default function Confirmacion() {
               <div className="no-imprimir mt-4 flex flex-wrap gap-2">
                 {reservation.slot_start && reservation.slot_end ? (
                   <Button asChild variant="outline" className={outline}>
-                    <a href={calendarioUrl(reservation, data.settings.shop_name)} target="_blank" rel="noreferrer">
+                    <a
+                      href={calendarioUrl(reservation, data.settings.shop_name)}
+                      target={ES_IOS ? undefined : '_blank'}
+                      rel="noreferrer"
+                    >
                       <CalendarPlus className="mr-2 h-4 w-4" /> Agregar a mi calendario
                     </a>
                   </Button>
                 ) : null}
                 <Button asChild variant="outline" className={outline}>
                   <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(reservation.delivery_point_name)}`}
+                    href={mapaUrl(reservation)}
                     target="_blank"
                     rel="noreferrer"
                   >

@@ -6,6 +6,7 @@ se devuelven en `/confirmacion` cuando se presenta un token privado válido.
 """
 
 import logging
+from datetime import date, datetime, timezone
 from typing import Annotated, Any, Dict, List, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
@@ -15,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
 from core.config import settings as app_settings
 from models.categories import Categories
+from models.delivery_points import Delivery_points
 from models.products import Products
 from models.uploaded_images import Uploaded_images
 from routers.auth import LoginRateLimiter, _rate_keys
@@ -33,6 +35,7 @@ from services import mailer
 from services.reservation_engine import (
     ACTIVE_STATUSES,
     STATUS_LABELS,
+    MX_TZ,
     InvalidReservationExpiration,
     ReservationError,
     cancel_by_customer,
@@ -45,6 +48,7 @@ from services.reservation_engine import (
     load_images_for_products,
     load_reservation_items,
     load_variants_for_products,
+    sanitize_text,
     serialize_product,
     store_settings_public,
     get_store_settings,
@@ -55,6 +59,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/shop", tags=["shop"])
 # shortcut: límite en memoria por IP (1 réplica); con varias réplicas, moverlo al proxy o a la BD.
 reservation_limiter = LoginRateLimiter(max_attempts=5, window_seconds=600)
+HHMM_PATTERN = r"^([01]\d|2[0-3]):[0-5]\d$"
 
 
 async def _categories_map(db: AsyncSession) -> Dict[int, Categories]:
@@ -333,7 +338,7 @@ async def submit_reservation(
     }
 
 
-def _public_confirmation(reservation: Any, items: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _public_confirmation(reservation: Any, items: List[Dict[str, Any]], address: str) -> Dict[str, Any]:
     """Allowlist the minimum fields needed to render a private confirmation."""
     return {
         "folio": reservation.folio,
@@ -341,6 +346,7 @@ def _public_confirmation(reservation: Any, items: List[Dict[str, Any]]) -> Dict[
         "status_label": STATUS_LABELS.get(reservation.status, reservation.status),
         "delivery_point_name": reservation.delivery_point_name or "",
         "delivery_point_reference": reservation.delivery_point_reference or "",
+        "delivery_point_address": address,
         "delivery_date": reservation.delivery_date or "",
         "slot_start": reservation.slot_start or "",
         "slot_end": reservation.slot_end or "",
@@ -372,10 +378,13 @@ async def confirmation(data: ConfirmationTokenRequest, db: AsyncSession = Depend
         settings = await get_store_settings(db)
         config = store_settings_public(settings)
         items = await load_reservation_items(db, reservation.id)
+        # Para "Cómo llegar": el mapa necesita la dirección; sólo con el nombre ("Metro X") adivina.
+        point = await db.get(Delivery_points, reservation.delivery_point_id) if reservation.delivery_point_id else None
+        address = ", ".join(part for part in (point.address, point.city) if part) if point else ""
         bank_details_allowed = reservation.status in ACTIVE_STATUSES
         private = await get_private_settings(db) if bank_details_allowed else None
         return {
-            "reservation": _public_confirmation(reservation, items),
+            "reservation": _public_confirmation(reservation, items, address),
             "settings": {
                 "shop_name": config["shop_name"],
                 "logo_url": config["logo_url"],
@@ -417,6 +426,50 @@ async def cancel_confirmation(data: ConfirmationTokenRequest, db: AsyncSession =
     if reservation is None:
         raise HTTPException(status_code=404, detail="No encontramos esta reservación.")
     return {"status": reservation.status, "status_label": STATUS_LABELS[reservation.status]}
+
+
+def _ics_text(value: str, limit: int) -> str:
+    # sanitize_text quita saltos de línea: nadie puede colar líneas propias en el archivo.
+    return sanitize_text(value, limit).replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,")
+
+
+def _ics_moment(day: date, hhmm: str) -> str:
+    hour, minute = (int(part) for part in hhmm.split(":"))
+    moment = datetime(day.year, day.month, day.day, hour, minute, tzinfo=MX_TZ)
+    return moment.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+@router.get("/calendar.ics")
+async def calendar_event(
+    folio: Annotated[str, Query(max_length=40, pattern=r"^[A-Z0-9-]+$")],
+    day: Annotated[date, Query(alias="date")],
+    start: Annotated[str, Query(pattern=HHMM_PATTERN)],
+    end: Annotated[str, Query(pattern=HHMM_PATTERN)],
+    title: Annotated[str, Query(max_length=200)],
+    place: Annotated[str, Query(max_length=300)] = "",
+    details: Annotated[str, Query(max_length=500)] = "",
+) -> Response:
+    """Evento para la app de calendario del iPhone. Sólo repite lo que manda la página: no lee la base."""
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//apartados//ES",
+        "BEGIN:VEVENT",
+        f"UID:{folio}@apartados",
+        f"DTSTAMP:{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
+        f"DTSTART:{_ics_moment(day, start)}",
+        f"DTEND:{_ics_moment(day, end)}",
+        f"SUMMARY:{_ics_text(title, 200)}",
+        f"LOCATION:{_ics_text(place, 300)}",
+        f"DESCRIPTION:{_ics_text(details, 500)}",
+        "END:VEVENT",
+        "END:VCALENDAR",
+    ]
+    return Response(
+        "\r\n".join(lines) + "\r\n",
+        media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="apartado-{folio}.ics"', "Cache-Control": "no-store"},
+    )
 
 
 # Las fotos nunca cambian, así que sólo la primera visita tras un reinicio paga la consulta a la base.

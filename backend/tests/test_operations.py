@@ -916,3 +916,38 @@ def test_long_texts_keep_their_line_breaks(client):
     assert saved.status_code == 200, saved.text
     detail = client.get(f"/api/v1/shop/products/{row['slug']}").json()["product"]
     assert detail["full_description"] == "Textura cremosa.\n\nDura todo el día."
+
+
+def test_confirmation_gives_the_map_an_address_not_just_the_point_name(client):
+    created, _payload = create_reservation(client)
+    with db_connection() as db:
+        point = db.execute(
+            "SELECT p.address, p.city FROM reservations r JOIN delivery_points p ON p.id = r.delivery_point_id"
+            " WHERE r.folio = ?",
+            (created["folio"],),
+        ).fetchone()
+    reservation = client.post(
+        "/api/v1/shop/confirmation", json={"token": created["private_token"]}
+    ).json()["reservation"]
+    assert reservation["delivery_point_address"] == ", ".join(part for part in point if part)
+
+
+def test_calendar_file_is_in_utc_and_cannot_be_given_extra_lines(client):
+    response = client.get(
+        "/api/v1/shop/calendar.ics",
+        params={
+            "folio": "AP-20261020-ABCD",
+            "date": "2026-10-20",
+            "start": "10:00",
+            "end": "11:30",
+            "title": "Recoger mi apartado",
+            "place": "Metro Insurgentes, CDMX\nATTENDEE:mailto:x@example.com",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/calendar")
+    lines = response.text.split("\r\n")
+    assert "DTSTART:20261020T160000Z" in lines and "DTEND:20261020T173000Z" in lines
+    assert r"LOCATION:Metro Insurgentes\, CDMX ATTENDEE:mailto:x@example.com" in lines
+    assert not any(line.startswith("ATTENDEE") for line in lines)
+    assert client.get("/api/v1/shop/calendar.ics", params={"folio": "x", "date": "2026-10-20", "start": "25:00", "end": "11:00", "title": "t"}).status_code == 422

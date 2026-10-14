@@ -211,6 +211,7 @@ class ConfirmationReservationPublic(PublicOutput):
     status_label: str
     delivery_point_name: str
     delivery_point_reference: str
+    delivery_point_address: str
     delivery_date: str
     slot_start: str
     slot_end: str

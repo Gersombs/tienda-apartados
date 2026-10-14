@@ -51,6 +51,7 @@ PUBLIC_ENDPOINTS = frozenset(
         ("POST", "/api/v1/shop/confirmation"),
         ("POST", "/api/v1/shop/confirmation/cancel"),
         ("GET", "/api/v1/shop/images/{image_id}"),
+        ("GET", "/api/v1/shop/calendar.ics"),
     }
 )
 PROTECTED_AUTH_ENDPOINTS = frozenset(
