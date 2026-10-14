@@ -8,10 +8,12 @@ el comando CLI local documentado; no existe registro por HTTP.
 import csv
 import io
 import logging
+
+import httpx
 from datetime import timedelta
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -1217,6 +1219,35 @@ async def delete_category(
 # --------------------------------------------------------------------------- #
 # Puntos de entrega y horarios
 # --------------------------------------------------------------------------- #
+PLACES_AUTOCOMPLETE_URL = "https://places.googleapis.com/v1/places:autocomplete"
+
+
+@router.get("/address-suggestions")
+async def address_suggestions(
+    q: str = Query(min_length=3, max_length=200),
+    admin: Admin_accounts = Depends(get_admin),
+) -> Dict[str, Any]:
+    """Direcciones sugeridas por Google mientras la admin escribe. La clave nunca sale del servidor."""
+    key = app_settings.google_maps_api_key.strip()
+    if not key:
+        return {"suggestions": []}
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as http:
+            response = await http.post(
+                PLACES_AUTOCOMPLETE_URL,
+                headers={"X-Goog-Api-Key": key},
+                json={"input": q, "includedRegionCodes": ["mx"], "languageCode": "es"},
+            )
+        response.raise_for_status()
+        found = response.json().get("suggestions", [])
+    except (httpx.HTTPError, ValueError) as exc:
+        # Sin sugerencias la admin sigue escribiendo a mano; no vale la pena un error en pantalla.
+        logger.warning("Google Places no respondió (%s)", type(exc).__name__)
+        return {"suggestions": []}
+    texts = [s.get("placePrediction", {}).get("text", {}).get("text", "") for s in found]
+    return {"suggestions": [t for t in texts if t][:5]}
+
+
 @router.get("/delivery")
 async def delivery_config(
     admin: Admin_accounts = Depends(get_admin), db: AsyncSession = Depends(get_db)

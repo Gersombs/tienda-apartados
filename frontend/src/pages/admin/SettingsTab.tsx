@@ -23,6 +23,62 @@ const PALETAS = [
 ];
 
 export type DeliverySlot = DeliveryConfig['slots'][number];
+
+/** Campo de dirección con sugerencias de Google mientras se escribe (si la tienda tiene clave configurada). */
+function AddressInput({ id, value, onChange }: { id: string; value: string; onChange: (value: string) => void }) {
+  const [hints, setHints] = useState<string[]>([]);
+  const [typing, setTyping] = useState(false);
+  useEffect(() => {
+    const q = value.trim();
+    if (!typing || q.length < 4) {
+      setHints([]);
+      return;
+    }
+    let live = true; // una respuesta vieja no debe pisar a la de lo último que se escribió
+    const timer = setTimeout(() => {
+      api<{ suggestions: string[] }>('/api/v1/crm/address-suggestions', 'GET', { q })
+        .then((r) => live && setHints(r.suggestions))
+        .catch(() => live && setHints([]));
+    }, 350);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [value, typing]);
+  return (
+    <div className="relative">
+      <Input
+        id={id}
+        value={value}
+        autoComplete="off"
+        onChange={(e) => {
+          setTyping(true);
+          onChange(e.target.value);
+        }}
+        onBlur={() => setTimeout(() => setTyping(false), 200)}
+        className="tap mt-1"
+      />
+      {hints.length ? (
+        <ul className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+          {hints.map((hint) => (
+            <li key={hint}>
+              <button
+                type="button"
+                className="tap w-full px-3 py-2 text-left text-sm hover:bg-secondary"
+                onClick={() => {
+                  setTyping(false);
+                  onChange(hint);
+                }}
+              >
+                {hint}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
 export type DeliveryPoint = DeliveryConfig['points'][number];
 
 /** Horarios de un punto de entrega: alta, pausa y borrado. */
@@ -548,14 +604,11 @@ export function SettingsTab({ toast }: { toast: ToastFn }) {
                     />
                   </div>
                   <div className="sm:col-span-2">
-                    <Label htmlFor={`dp-addr-${point.id}`}>Dirección</Label>
-                    <Input
+                    <Label htmlFor={`dp-addr-${point.id}`}>Dirección (para el mapa de la clienta)</Label>
+                    <AddressInput
                       id={`dp-addr-${point.id}`}
                       value={point.address}
-                      onChange={(e) =>
-                        editPoint(saved, { address: e.target.value })
-                      }
-                      className="tap mt-1"
+                      onChange={(address) => editPoint(saved, { address })}
                     />
                   </div>
                 </div>

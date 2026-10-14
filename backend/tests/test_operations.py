@@ -951,3 +951,29 @@ def test_calendar_file_is_in_utc_and_cannot_be_given_extra_lines(client):
     assert r"LOCATION:Metro Insurgentes\, CDMX ATTENDEE:mailto:x@example.com" in lines
     assert not any(line.startswith("ATTENDEE") for line in lines)
     assert client.get("/api/v1/shop/calendar.ics", params={"folio": "x", "date": "2026-10-20", "start": "25:00", "end": "11:00", "title": "t"}).status_code == 422
+
+
+def test_address_suggestions_come_from_google_without_exposing_the_key(client, monkeypatch):
+    import httpx
+    from core.config import settings
+
+    login(client)
+    assert client.get("/api/v1/crm/address-suggestions", params={"q": "Metro Insur"}).json() == {"suggestions": []}
+
+    sent = {}
+
+    async def fake_post(_self, url, headers=None, json=None):
+        sent.update(url=url, headers=headers, body=json)
+        return httpx.Response(
+            200,
+            json={"suggestions": [{"placePrediction": {"text": {"text": "Metro Insurgentes, Roma Nte., CDMX, México"}}}]},
+            request=httpx.Request("POST", url),
+        )
+
+    monkeypatch.setattr(settings, "google_maps_api_key", "clave-secreta-de-prueba")
+    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+    response = client.get("/api/v1/crm/address-suggestions", params={"q": "Metro Insur"})
+    assert response.json() == {"suggestions": ["Metro Insurgentes, Roma Nte., CDMX, México"]}
+    assert sent["headers"]["X-Goog-Api-Key"] == "clave-secreta-de-prueba"
+    assert sent["body"]["includedRegionCodes"] == ["mx"]
+    assert "clave-secreta" not in response.text

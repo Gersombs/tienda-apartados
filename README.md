@@ -59,6 +59,7 @@ Cada tienda es una instalación propia: su servicio en Railway, su base PostgreS
    - `AUTH_SECRET` = 32+ caracteres aleatorios, distinto por tienda (`python -c "import secrets; print(secrets.token_urlsafe(32))"`).
    - `PUBLIC_SITE_URL`, `ALLOWED_ORIGINS` y `VITE_PUBLIC_SITE_URL` = la misma URL HTTPS de la tienda, sin `/` final.
    - `RESEND_API_KEY` y `EMAIL_FROM_ADDRESS` = tu clave y un remitente de tu dominio verificado en Resend (por ejemplo `avisos@tudominio.com`). Cada tienda sólo elige el nombre visible; las respuestas de las clientas llegan al correo de contacto de la tienda.
+   - `GOOGLE_MAPS_API_KEY` (opcional) = clave de Google Cloud con sólo **Places API (New)** habilitada; sugiere direcciones al dar de alta puntos de entrega en el CRM. Vive sólo en el servidor. Sin ella, la dirección se escribe a mano.
 4. **Desplegar.** El contenedor aplica las migraciones al arrancar (una sola instancia por tienda).
 5. **Crear la tienda** desde la consola del servicio (`railway ssh` o la consola web):
    `python -m cli nueva-tienda --nombre "Luna Cosméticos" --email luna@correo.com --whatsapp 5512345678`

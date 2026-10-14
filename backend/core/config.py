@@ -54,6 +54,8 @@ class Settings(BaseSettings):
     admin_email: str = ""
     email_from_address: str = ""
     email_from_name: str = "Nébula Beauty MX"
+    # Clave de servidor de Google (Places API New) para sugerir direcciones en el CRM; vacía = sin sugerencias.
+    google_maps_api_key: str = ""
     model_config = SettingsConfigDict(
         env_file=(str(BACKEND_DIR.parent / ".env"), str(BACKEND_DIR / ".env")),
         env_file_encoding="utf-8",
