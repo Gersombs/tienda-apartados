@@ -48,6 +48,22 @@ def test_spa_shell_and_manifest_show_the_store_name(tmp_path, monkeypatch):
     assert json.loads(manifest) == {"name": 'Ana "<b>"', "short_name": 'Ana "<b>"'}
 
 
+def test_admin_shell_installs_as_its_own_app(tmp_path, monkeypatch):
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    (dist / "index.html").write_text(f"<head>{frontend_module.DEFAULT_MANIFEST}</head>", encoding="utf-8")
+    (dist / "admin.webmanifest").write_text('{"name": "Nébula Beauty MX · Admin"}', encoding="utf-8")
+    monkeypatch.setattr(frontend_module, "DIST_DIR", dist.resolve())
+
+    admin = frontend_module.serve_frontend("/admin").body.decode()
+    shop = frontend_module.serve_frontend("/catalogo", "Ana").body.decode()
+    manifest = frontend_module.serve_frontend("/admin.webmanifest", 'Ana "B"').body.decode()
+
+    assert 'href="/admin.webmanifest"' in admin and "/site.webmanifest" not in admin
+    assert 'href="/site.webmanifest"' in shop and "admin" not in shop
+    assert json.loads(manifest) == {"name": 'Ana "B" · Admin'}
+
+
 def test_spa_shell_applies_only_known_palettes(tmp_path, monkeypatch):
     dist = tmp_path / "dist"
     dist.mkdir()

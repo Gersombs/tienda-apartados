@@ -1,0 +1,16 @@
+{
+  "name": "Nébula Beauty MX · Admin",
+  "short_name": "Mi tienda",
+  "description": "Panel para gestionar apartados, catálogo y entregas.",
+  "lang": "es-MX",
+  "id": "/admin",
+  "start_url": "/admin",
+  "scope": "/admin",
+  "display": "standalone",
+  "background_color": "#171717",
+  "theme_color": "#171717",
+  "icons": [
+    { "src": "/icons/admin-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/admin-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

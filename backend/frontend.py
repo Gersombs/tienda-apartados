@@ -31,6 +31,13 @@ PALETTES = {
     "coral": "#BF3A22",
 }
 DEFAULT_THEME_COLOR = '<meta name="theme-color" content="#B8123F" />'
+DEFAULT_MANIFEST = '<link rel="manifest" href="/site.webmanifest" />'
+# El panel se instala como app aparte: abre en /admin con el ícono de la plataforma.
+ADMIN_APP_HEAD = (
+    '<link rel="manifest" href="/admin.webmanifest" />'
+    '<link rel="apple-touch-icon" href="/icons/admin-180.png" />'
+    '<meta name="apple-mobile-web-app-title" content="Mi tienda" />'
+)
 
 
 def _json_text(value: str) -> str:
@@ -44,6 +51,7 @@ BRANDED_FILES = {
         (f'"{DEFAULT_SHOP_NAME}"', lambda name: f'"{_json_text(name)}"'),
         ('"Nébula Beauty"', lambda name: f'"{_json_text(name)}"'),
     ],
+    "admin.webmanifest": [(DEFAULT_SHOP_NAME, _json_text)],
 }
 
 
@@ -107,7 +115,8 @@ def serve_frontend(
     palette = palette if palette in PALETTES else None
     # Sólo rutas propias: la portada pide el hero junto con el JS en vez de esperar a /bootstrap.
     hero_url = hero_url if path == "/" and hero_url and hero_url.startswith("/") and not hero_url.startswith("//") else None
-    if (shop_name or palette or hero_url) and asset.name in BRANDED_FILES:
+    admin_app = path.startswith("/admin") and asset.name == "index.html"
+    if (shop_name or palette or hero_url or admin_app) and asset.name in BRANDED_FILES:
         # El build trae el nombre por defecto; cada tienda muestra el suyo (título, vista previa al compartir, manifest).
         branded = asset.read_text(encoding="utf-8")
         for default, escape in BRANDED_FILES[asset.name] if shop_name else []:
@@ -117,6 +126,8 @@ def serve_frontend(
             branded = branded.replace("<html ", f'<html data-paleta="{palette}" ', 1).replace(
                 DEFAULT_THEME_COLOR, f'<meta name="theme-color" content="{PALETTES[palette]}" />'
             )
+        if admin_app:
+            branded = branded.replace(DEFAULT_MANIFEST, ADMIN_APP_HEAD, 1)
         if hero_url and asset.name == "index.html":
             preload = f'<link rel="preload" as="image" fetchpriority="high" href="{html.escape(hero_url, quote=True)}" />'
             branded = branded.replace("</head>", preload + "</head>", 1)
