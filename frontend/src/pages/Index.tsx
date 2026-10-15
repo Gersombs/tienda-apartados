@@ -216,12 +216,12 @@ export default function Index() {
                   <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
                     <Icon className="h-5 w-5" />
                   </span>
-                  <span className="precio text-xs font-bold tracking-wider text-accent-foreground">
+                  <span className="precio text-sm font-bold tracking-wider text-accent-foreground">
                     PASO {index + 1}
                   </span>
                 </div>
-                <h3 className="mt-3 text-base">{paso.titulo}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{paso.texto}</p>
+                <h3 className="mt-3 text-lg">{paso.titulo}</h3>
+                <p className="mt-1 text-base leading-relaxed text-foreground/80">{paso.texto}</p>
               </div>
             );
           })}
@@ -231,7 +231,7 @@ export default function Index() {
       {/* Puntos de entrega */}
       <section className="mt-12">
         <h2>Dónde te entregamos</h2>
-        <p className="mt-1 max-w-prose text-sm text-muted-foreground">
+        <p className="mt-1 max-w-prose text-base text-foreground/80">
           Elige el punto que te quede más cerca al momento de enviar tu solicitud de apartado.
         </p>
         {!data ? (
@@ -251,11 +251,11 @@ export default function Index() {
                 <div className="flex items-start gap-2">
                   <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
                   <div className="min-w-0">
-                    <h3 className="text-sm">{point.name}</h3>
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    <h3 className="text-base">{point.name}</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-foreground/80">
                       {point.reference || point.address}
                     </p>
-                    <p className="mt-2 text-xs text-muted-foreground">
+                    <p className="mt-2 text-sm text-muted-foreground">
                       {point.days.length > 0
                         ? `${point.days.length} ${point.days.length === 1 ? 'día' : 'días'} con horarios disponibles`
                         : 'Sin horarios disponibles por ahora'}

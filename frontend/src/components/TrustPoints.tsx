@@ -11,14 +11,14 @@ const CONFIANZA = [
 export default function TrustPoints({ className = '' }: { className?: string }) {
   return (
     <div className={className}>
-      <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-medium">
+      <ul className="flex flex-wrap gap-x-5 gap-y-2 text-base font-medium">
         {CONFIANZA.map(({ icon: Icon, texto }) => (
           <li key={texto} className="flex items-center gap-1.5">
             <Icon className="h-4 w-4 text-primary" /> {texto}
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{AVISO_SIN_PAGO}</p>
+      <p className="mt-3 text-base leading-relaxed text-foreground/80">{AVISO_SIN_PAGO}</p>
     </div>
   );
 }

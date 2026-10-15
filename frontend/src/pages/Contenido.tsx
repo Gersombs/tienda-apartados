@@ -97,7 +97,7 @@ export default function Contenido({ contentKey }: { contentKey: ContentKey }) {
     <ShopLayout settings={settings}>
       <header>
         <h1 className="text-[1.75rem] sm:text-3xl">{meta.titulo}</h1>
-        <p className="mt-1 max-w-prose text-sm leading-relaxed text-muted-foreground">{meta.intro}</p>
+        <p className="mt-1 max-w-prose text-base leading-relaxed text-foreground/80">{meta.intro}</p>
       </header>
 
       {loading ? (
@@ -129,10 +129,10 @@ export default function Contenido({ contentKey }: { contentKey: ContentKey }) {
         <Accordion type="single" collapsible className="mt-5 rounded-2xl border border-border bg-card px-4">
           {faqItems.map((item, index) => (
             <AccordionItem key={item.pregunta} value={`faq-${index}`}>
-              <AccordionTrigger className="py-4 text-left text-sm font-semibold">
+              <AccordionTrigger className="py-4 text-left text-base font-semibold">
                 {item.pregunta}
               </AccordionTrigger>
-              <AccordionContent className="text-sm leading-relaxed text-muted-foreground">
+              <AccordionContent className="text-base leading-relaxed text-foreground/80">
                 {item.respuesta}
               </AccordionContent>
             </AccordionItem>
@@ -140,7 +140,7 @@ export default function Contenido({ contentKey }: { contentKey: ContentKey }) {
         </Accordion>
       ) : (
         <article className="mt-5 rounded-2xl border border-border bg-card p-5">
-          <p className="max-w-prose whitespace-pre-line text-sm leading-relaxed text-foreground/90">
+          <p className="max-w-prose whitespace-pre-line text-base leading-relaxed text-foreground/90">
             {raw}
           </p>
         </article>
@@ -148,7 +148,7 @@ export default function Contenido({ contentKey }: { contentKey: ContentKey }) {
 
       {/* El texto de la tienda suele traer ya el aviso; no repetirlo. */}
       {!raw.includes(AVISO_SIN_PAGO) && (
-        <p className="mt-5 rounded-xl border border-primary/30 bg-accent px-4 py-3 text-sm font-medium leading-relaxed text-accent-foreground">
+        <p className="mt-5 rounded-xl border border-primary/30 bg-accent px-4 py-3 text-base font-medium leading-relaxed text-accent-foreground">
           {AVISO_SIN_PAGO}
         </p>
       )}
