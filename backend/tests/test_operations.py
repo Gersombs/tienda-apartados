@@ -936,17 +936,18 @@ def test_confirmation_gives_the_map_an_address_without_repeating_the_city(client
 def test_calendar_file_comes_from_the_saved_reservation_not_from_the_link(client):
     created, _payload = create_reservation(client)
     with db_connection() as db:
-        day, start, end = db.execute(
-            "SELECT delivery_date, slot_start, slot_end FROM reservations WHERE folio = ?", (created["folio"],)
-        ).fetchone()
+        db.execute(
+            "UPDATE reservations SET delivery_date = '2026-10-20', slot_start = '10:00', slot_end = '11:30' WHERE folio = ?",
+            (created["folio"],),
+        )
+        db.commit()
     url = client.post("/api/v1/shop/confirmation", json={"token": created["private_token"]}).json()["reservation"]["calendar_url"]
     response = client.get(url)
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/calendar")
     lines = response.text.split("\r\n")
     # 10:00 en CDMX (UTC-6) es 16:00 UTC.
-    utc = lambda hhmm: f"{day.replace('-', '')}T{int(hhmm[:2]) + 6:02d}{hhmm[3:5]}00Z"
-    assert f"DTSTART:{utc(start)}" in lines and f"DTEND:{utc(end)}" in lines
+    assert "DTSTART:20261020T160000Z" in lines and "DTEND:20261020T173000Z" in lines
     assert any(line.startswith("SUMMARY:Recoger mi apartado " + created["folio"]) for line in lines)
 
     # Un enlace armado a mano (otro folio, sin la firma o con texto propio) no sirve.
