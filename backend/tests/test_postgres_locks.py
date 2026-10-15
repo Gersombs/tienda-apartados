@@ -42,7 +42,7 @@ def session_maker():
         [sys.executable, "-m", "alembic", "upgrade", "head"],
         cwd=BACKEND_DIR, env=env, capture_output=True, text=True, timeout=180, check=False,
     )
-    assert migrated.returncode == 0, migrated.stderr
+    assert migrated.returncode == 0, migrated.stderr.strip().splitlines()[-1]  # la última línea es el error real
     engine = create_configured_async_engine(database_engine_configuration(TEST_DATABASE_URL), poolclass=NullPool)
     yield async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     asyncio.run(engine.dispose())
