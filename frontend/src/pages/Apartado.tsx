@@ -323,7 +323,7 @@ export default function Apartado() {
           Confirma que todo esté correcto. Al enviarla, apartamos tus productos y te mandamos tu folio por correo.
         </p>
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+        <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
           <div className="space-y-4">
             <section className="rounded-2xl border border-border bg-card p-4">
               <div className="flex items-center justify-between gap-3">
@@ -439,7 +439,7 @@ export default function Apartado() {
         </div>
       ) : null}
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
         {/* Productos: arriba en celular; columna fija a la derecha en escritorio. */}
         <section
           aria-label="Productos apartados"

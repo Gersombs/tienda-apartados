@@ -241,7 +241,7 @@ export function ReservationsTab({ toast }: { toast: ToastFn }) {
   };
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
       <div>
         <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
           <div className="relative">

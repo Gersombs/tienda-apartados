@@ -291,7 +291,7 @@ export default function Confirmacion() {
         </p>
       )}
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
         <div className="space-y-4">
           {/* La cita es lo que más necesita la clienta: va primero y con acciones. */}
           <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
