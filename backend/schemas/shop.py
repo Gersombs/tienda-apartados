@@ -212,6 +212,7 @@ class ConfirmationReservationPublic(PublicOutput):
     delivery_point_name: str
     delivery_point_reference: str
     delivery_point_address: str
+    calendar_url: str
     delivery_date: str
     slot_start: str
     slot_end: str

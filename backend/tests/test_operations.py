@@ -918,39 +918,41 @@ def test_long_texts_keep_their_line_breaks(client):
     assert detail["full_description"] == "Textura cremosa.\n\nDura todo el día."
 
 
-def test_confirmation_gives_the_map_an_address_not_just_the_point_name(client):
+def test_confirmation_gives_the_map_an_address_without_repeating_the_city(client):
     created, _payload = create_reservation(client)
     with db_connection() as db:
-        point = db.execute(
-            "SELECT p.address, p.city FROM reservations r JOIN delivery_points p ON p.id = r.delivery_point_id"
-            " WHERE r.folio = ?",
+        db.execute(
+            "UPDATE delivery_points SET address = 'Av. Insurgentes Sur 300, Roma Nte., Ciudad de México, CDMX',"
+            " city = 'Ciudad de México' WHERE id = (SELECT delivery_point_id FROM reservations WHERE folio = ?)",
             (created["folio"],),
-        ).fetchone()
+        )
+        db.commit()
     reservation = client.post(
         "/api/v1/shop/confirmation", json={"token": created["private_token"]}
     ).json()["reservation"]
-    assert reservation["delivery_point_address"] == ", ".join(part for part in point if part)
+    assert reservation["delivery_point_address"] == "Av. Insurgentes Sur 300, Roma Nte., Ciudad de México, CDMX"
 
 
-def test_calendar_file_is_in_utc_and_cannot_be_given_extra_lines(client):
-    response = client.get(
-        "/api/v1/shop/calendar.ics",
-        params={
-            "folio": "AP-20261020-ABCD",
-            "date": "2026-10-20",
-            "start": "10:00",
-            "end": "11:30",
-            "title": "Recoger mi apartado",
-            "place": "Metro Insurgentes, CDMX\nATTENDEE:mailto:x@example.com",
-        },
-    )
+def test_calendar_file_comes_from_the_saved_reservation_not_from_the_link(client):
+    created, _payload = create_reservation(client)
+    with db_connection() as db:
+        day, start, end = db.execute(
+            "SELECT delivery_date, slot_start, slot_end FROM reservations WHERE folio = ?", (created["folio"],)
+        ).fetchone()
+    url = client.post("/api/v1/shop/confirmation", json={"token": created["private_token"]}).json()["reservation"]["calendar_url"]
+    response = client.get(url)
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/calendar")
     lines = response.text.split("\r\n")
-    assert "DTSTART:20261020T160000Z" in lines and "DTEND:20261020T173000Z" in lines
-    assert r"LOCATION:Metro Insurgentes\, CDMX ATTENDEE:mailto:x@example.com" in lines
-    assert not any(line.startswith("ATTENDEE") for line in lines)
-    assert client.get("/api/v1/shop/calendar.ics", params={"folio": "x", "date": "2026-10-20", "start": "25:00", "end": "11:00", "title": "t"}).status_code == 422
+    # 10:00 en CDMX (UTC-6) es 16:00 UTC.
+    utc = lambda hhmm: f"{day.replace('-', '')}T{int(hhmm[:2]) + 6:02d}{hhmm[3:5]}00Z"
+    assert f"DTSTART:{utc(start)}" in lines and f"DTEND:{utc(end)}" in lines
+    assert any(line.startswith("SUMMARY:Recoger mi apartado " + created["folio"]) for line in lines)
+
+    # Un enlace armado a mano (otro folio, sin la firma o con texto propio) no sirve.
+    assert client.get("/api/v1/shop/calendar.ics", params={"folio": created["folio"], "key": "x" * 32}).status_code == 404
+    forged = client.get(url + "&title=Transfiere%20a%20la%20CLABE%20012")
+    assert "CLABE" not in forged.text
 
 
 def test_address_suggestions_come_from_google_without_exposing_the_key(client, monkeypatch):

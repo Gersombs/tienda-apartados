@@ -76,19 +76,8 @@ function calendarioUrl(reservation: Reservation, shopName: string) {
   const titulo = `Recoger mi apartado ${reservation.folio} — ${shopName}`;
   const detalles = `Total a pagar al recibir: ${pesos(reservation.total_amount)}. ${AVISO_SIN_PAGO}`;
   const sitio = [reservation.delivery_point_name, lugar(reservation)].filter((v, i, all) => v && all.indexOf(v) === i).join(', ');
-  if (ES_IOS) {
-    // El iPhone abre un archivo .ics directo en su app Calendario.
-    const params = new URLSearchParams({
-      folio: reservation.folio,
-      date: reservation.delivery_date,
-      start: reservation.slot_start.slice(0, 5),
-      end: reservation.slot_end.slice(0, 5),
-      title: titulo,
-      place: sitio,
-      details: detalles,
-    });
-    return `/api/v1/shop/calendar.ics?${params.toString()}`;
-  }
+  // El iPhone abre un archivo .ics directo en su app Calendario; el servidor lo arma con los datos guardados.
+  if (ES_IOS && reservation.calendar_url) return reservation.calendar_url;
   const dia = reservation.delivery_date.replace(/-/g, '');
   const hora = (value: string) => `${value.replace(':', '').slice(0, 4)}00`;
   const params = new URLSearchParams({

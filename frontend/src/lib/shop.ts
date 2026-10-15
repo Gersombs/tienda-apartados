@@ -117,6 +117,7 @@ export interface Reservation {
   delivery_point_reference: string;
   /** Sólo en la confirmación pública: dirección y ciudad para el mapa. */
   delivery_point_address?: string;
+  calendar_url?: string;
   delivery_date: string;
   slot_start: string;
   slot_end: string;

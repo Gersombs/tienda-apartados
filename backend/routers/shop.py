@@ -13,11 +13,13 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Res
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.auth import keyed_token_hash, safe_compare
 from core.database import get_db
 from core.config import settings as app_settings
 from models.categories import Categories
 from models.delivery_points import Delivery_points
 from models.products import Products
+from models.reservations import Reservations
 from models.uploaded_images import Uploaded_images
 from routers.auth import LoginRateLimiter, _rate_keys
 from schemas.shop import (
@@ -59,7 +61,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/shop", tags=["shop"])
 # shortcut: límite en memoria por IP (1 réplica); con varias réplicas, moverlo al proxy o a la BD.
 reservation_limiter = LoginRateLimiter(max_attempts=5, window_seconds=600)
-HHMM_PATTERN = r"^([01]\d|2[0-3]):[0-5]\d$"
 
 
 async def _categories_map(db: AsyncSession) -> Dict[int, Categories]:
@@ -338,6 +339,21 @@ async def submit_reservation(
     }
 
 
+def _calendar_key(folio: str) -> str:
+    # Firma del servidor: sólo quien vio la confirmación tiene el enlace; nadie puede inventar uno.
+    return keyed_token_hash(f"calendario:{folio}")[:32]
+
+
+async def _point_address(db: AsyncSession, reservation: Any) -> str:
+    """Para "Cómo llegar": el mapa necesita la dirección; sólo con el nombre ("Metro X") adivina."""
+    point = await db.get(Delivery_points, reservation.delivery_point_id) if reservation.delivery_point_id else None
+    if point is None:
+        return ""
+    address, city = point.address or "", point.city or ""
+    # Las sugerencias de Google ya traen la ciudad: no repetirla.
+    return ", ".join(part for part in (address, "" if city.lower() in address.lower() else city) if part)
+
+
 def _public_confirmation(reservation: Any, items: List[Dict[str, Any]], address: str) -> Dict[str, Any]:
     """Allowlist the minimum fields needed to render a private confirmation."""
     return {
@@ -347,6 +363,7 @@ def _public_confirmation(reservation: Any, items: List[Dict[str, Any]], address:
         "delivery_point_name": reservation.delivery_point_name or "",
         "delivery_point_reference": reservation.delivery_point_reference or "",
         "delivery_point_address": address,
+        "calendar_url": f"/api/v1/shop/calendar.ics?folio={reservation.folio}&key={_calendar_key(reservation.folio)}",
         "delivery_date": reservation.delivery_date or "",
         "slot_start": reservation.slot_start or "",
         "slot_end": reservation.slot_end or "",
@@ -378,9 +395,7 @@ async def confirmation(data: ConfirmationTokenRequest, db: AsyncSession = Depend
         settings = await get_store_settings(db)
         config = store_settings_public(settings)
         items = await load_reservation_items(db, reservation.id)
-        # Para "Cómo llegar": el mapa necesita la dirección; sólo con el nombre ("Metro X") adivina.
-        point = await db.get(Delivery_points, reservation.delivery_point_id) if reservation.delivery_point_id else None
-        address = ", ".join(part for part in (point.address, point.city) if part) if point else ""
+        address = await _point_address(db, reservation)
         bank_details_allowed = reservation.status in ACTIVE_STATUSES
         private = await get_private_settings(db) if bank_details_allowed else None
         return {
@@ -442,14 +457,23 @@ def _ics_moment(day: date, hhmm: str) -> str:
 @router.get("/calendar.ics")
 async def calendar_event(
     folio: Annotated[str, Query(max_length=40, pattern=r"^[A-Z0-9-]+$")],
-    day: Annotated[date, Query(alias="date")],
-    start: Annotated[str, Query(pattern=HHMM_PATTERN)],
-    end: Annotated[str, Query(pattern=HHMM_PATTERN)],
-    title: Annotated[str, Query(max_length=200)],
-    place: Annotated[str, Query(max_length=300)] = "",
-    details: Annotated[str, Query(max_length=500)] = "",
+    key: Annotated[str, Query(max_length=64)],
+    db: AsyncSession = Depends(get_db),
 ) -> Response:
-    """Evento para la app de calendario del iPhone. Sólo repite lo que manda la página: no lee la base."""
+    """Evento para la app de calendario del iPhone, armado con los datos guardados del apartado."""
+    reservation = None
+    if safe_compare(key, _calendar_key(folio)):
+        reservation = (await db.execute(select(Reservations).where(Reservations.folio == folio))).scalar_one_or_none()
+    if reservation is None or not reservation.delivery_date or not reservation.slot_start or not reservation.slot_end:
+        raise HTTPException(status_code=404, detail="No encontramos esta reservación.")
+    day = date.fromisoformat(reservation.delivery_date)
+    shop_name = store_settings_public(await get_store_settings(db))["shop_name"]
+    address = await _point_address(db, reservation)
+    place = ", ".join(dict.fromkeys(part for part in (reservation.delivery_point_name, address) if part))
+    details = (
+        f"Total a pagar al recibir: ${float(reservation.total_amount or 0):,.2f} MXN. "
+        "No pagarás nada en este sitio. La transferencia se realiza al momento de recibir tus productos."
+    )
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
@@ -457,9 +481,9 @@ async def calendar_event(
         "BEGIN:VEVENT",
         f"UID:{folio}@apartados",
         f"DTSTAMP:{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
-        f"DTSTART:{_ics_moment(day, start)}",
-        f"DTEND:{_ics_moment(day, end)}",
-        f"SUMMARY:{_ics_text(title, 200)}",
+        f"DTSTART:{_ics_moment(day, reservation.slot_start[:5])}",
+        f"DTEND:{_ics_moment(day, reservation.slot_end[:5])}",
+        f"SUMMARY:{_ics_text(f'Recoger mi apartado {folio} — {shop_name}', 200)}",
         f"LOCATION:{_ics_text(place, 300)}",
         f"DESCRIPTION:{_ics_text(details, 500)}",
         "END:VEVENT",
